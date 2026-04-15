@@ -30,6 +30,8 @@ include_directories(libs)
 add_executable(${PROJECT_NAME}
     src/momentum.h src/momentum.cpp
     src/lift_and_drag.cpp
+    src/main.cpp
+    src/integrator.h src/integrator.cpp
 )
 
 # GLEW: this creates its library and allows you to `#include "GL/glew.h"`

@@ -3,7 +3,7 @@
 using namespace Eigen;
 using Vector6f = Eigen::Matrix<float, 6, 1>;
 
-static inline Vector6f make_vec6(const Vector3f& rot, const Vector3f& trans) {
+Vector6f Momentum::make_vec6(const Vector3f& rot, const Vector3f& trans) {
     Vector6f v;
     v << rot, trans;
     return v;

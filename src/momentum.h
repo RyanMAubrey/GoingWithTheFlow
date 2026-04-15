@@ -17,6 +17,7 @@ class Momentum
 {
 public:
     Momentum();
+    Vector6f make_vec6(const Vector3f& rot, const Vector3f& trans);
     Vector6f calc_body_momentum(std::vector<Vector3f>& gamma_k, std::vector<Vector3f>& gamma_k1,
                                 std::vector<float>& mass_density, float h);
     Vector6f calc_fluid_momentum(std::vector<Vector3f>& gamma_k, std::vector<Vector3f>& gamma_k1,
