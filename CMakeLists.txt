@@ -29,6 +29,7 @@ include_directories(libs)
 # Specifies .cpp and .h files to be passed to the compiler
 add_executable(${PROJECT_NAME}
     src/momentum.h src/momentum.cpp
+    src/lift_and_drag.cpp
 )
 
 # GLEW: this creates its library and allows you to `#include "GL/glew.h"`
