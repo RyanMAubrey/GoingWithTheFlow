@@ -7,23 +7,23 @@
 // (torque, force) in the body frame.
 //
 //   // --- Mesh (body frame) ---
-//   std::vector<Vector3f>  positions_k;  // vertex positions at time k   (body)
-//   std::vector<Vector3f>  positions_k1; // vertex positions at time k+1 (body)
-//   std::vector<Vector3i>  faces;        // triangle indices
-//   std::vector<float>     mass_density; // per-vertex body mass density (kg/m^3)
+//   std::vector<Vector3f>  pos_k;          // vertex positions at time k   (body)
+//   std::vector<Vector3f>  pos_k1;         // vertex positions at time k+1 (body)
+//   std::vector<Vector3i>  faces;          // triangle indices
+//   std::vector<float>     mass_density;   // per-vertex body mass density (kg/m^3)
 //
 //   // --- State ---
-//   Matrix4f pose;                       // current pose (SE(3)): rotation A, translation b
-//   Vector6f body_twist;                 // current body-frame twist (omega, v)
+//   Matrix4f pose;                         // current pose (SE(3)): rotation A, translation b
+//   Vector6f body_twist;                   // current body-frame twist (omega, v)
 //
 //   // --- Physical parameters ---
-//   float fluid_density;                 // ambient fluid density (kg/m^3)
-//   float timestep;                      // integration time step (s)
-//   Vector3f gravity;                    // gravity vector in world space, e.g. (0,-9.81,0)
-//   float total_mass;                    // effective mass: (rho_b - rho_f) * V
+//   float fluid_density;                   // ambient fluid density (kg/m^3)
+//   float timestep;                        // integration time step (s)
+//   Vector3f gravity;                      // gravity vector in world space
+//   float total_mass;                      // effective mass: (rho_b - rho_f) * V
 //
 //   // --- Background flow ---
-//   Vector3f background_flow;            // typically zero current
+//   Vector3f background_flow;              // typically zero current
 //
 // =============================================================================
 
@@ -33,7 +33,7 @@
 // Uses the divergence theorem:
 //     V = (1/3) * sum_faces <gamma_ijk, n_ijk> * A_ijk
 // where gamma_ijk is the face centroid and n_ijk is the outward unit normal.
-float compute_volume(const std::vector<Vector3f>& positions,
+float compute_volume(const std::vector<Vector3f>& pos_k,
                      const std::vector<Vector3i>& faces)
 {
     float V = 0.0f;
@@ -42,9 +42,9 @@ float compute_volume(const std::vector<Vector3f>& positions,
         const int j = faces[f](1);
         const int k = faces[f](2);
 
-        const Vector3f p_i = positions[i];
-        const Vector3f p_j = positions[j];
-        const Vector3f p_k = positions[k];
+        const Vector3f p_i = pos_k[i];
+        const Vector3f p_j = pos_k[j];
+        const Vector3f p_k = pos_k[k];
 
         const Vector3f c = (p_i + p_j + p_k) / 3.0f;       // centroid
         const Vector3f N = (p_j - p_i).cross(p_k - p_i);   // 2*A*n
@@ -60,8 +60,8 @@ float compute_volume(const std::vector<Vector3f>& positions,
 
 
 // Lift and Drag  (Alg. 2 / Prop. 1)
-Vector6f calc_lift_and_drag(const std::vector<Vector3f>& positions_k,
-                            const std::vector<Vector3f>& positions_k1,
+Vector6f calc_lift_and_drag(const std::vector<Vector3f>& pos_k,
+                            const std::vector<Vector3f>& pos_k1,
                             const std::vector<Vector3i>& faces,
                             const Matrix4f& pose,
                             const Vector6f& body_twist,
@@ -88,10 +88,10 @@ Vector6f calc_lift_and_drag(const std::vector<Vector3f>& positions_k,
         const int k = faces[f](2);
 
         // Centroid of the triangle
-        const Vector3f centroid = (positions_k[i] + positions_k[j] + positions_k[k]) / 3.0f;
+        const Vector3f centroid = (pos_k[i] + pos_k[j] + pos_k[k]) / 3.0f;
 
         // Unnormalized normal = (p_j - p_i) x (p_k - p_i); area = 0.5 * |N|
-        const Vector3f N_raw = (positions_k[j] - positions_k[i]).cross(positions_k[k] - positions_k[i]);
+        const Vector3f N_raw = (pos_k[j] - pos_k[i]).cross(pos_k[k] - pos_k[i]);
         const float A_ijk    = 0.5f * N_raw.norm();
         if (A_ijk < 1e-12f) continue;              
         const Vector3f n_ijk = N_raw / (2.0f * A_ijk);  
@@ -102,9 +102,9 @@ Vector6f calc_lift_and_drag(const std::vector<Vector3f>& positions_k,
 
         // (2) shape-change contribution from the pose sequence
         const Vector3f centroid_prime =
-            ((positions_k1[i] - positions_k[i]) +
-             (positions_k1[j] - positions_k[j]) +
-             (positions_k1[k] - positions_k[k])) / (3.0f * timestep);
+            ((pos_k1[i] - pos_k[i]) +
+             (pos_k1[j] - pos_k[j]) +
+             (pos_k1[k] - pos_k[k])) / (3.0f * timestep);
 
         const Vector3f v_face_body = v_rigid + centroid_prime;
 
