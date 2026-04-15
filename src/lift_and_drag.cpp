@@ -1,15 +1,7 @@
 #include <vector>
 #include <Eigen/Dense>
 
-using namespace Eigen;
-using Vector6f = Eigen::Matrix<float, 6, 1>;
-
-// Put two Vector3f halves into a Vector6f.
-static inline Vector6f make_vec6(const Vector3f& rot, const Vector3f& trans) {
-    Vector6f v;
-    v << rot, trans;
-    return v;
-}
+#include "integrator.h"
 
 // =============================================================================
 // External Forces
