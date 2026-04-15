@@ -208,3 +208,6 @@ __marimo__/
 
 # QT Creator
 CMakeLists.txt.user
+
+# macOS
+.DS_Store
