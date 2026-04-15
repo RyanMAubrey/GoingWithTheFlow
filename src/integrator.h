@@ -1,6 +1,9 @@
 #ifndef INTEGRATOR_H
 #define INTEGRATOR_H
 
+#include <vector>
+#include <Eigen/Dense>
+
 using namespace Eigen;
 using Vector6f = Eigen::Matrix<float, 6, 1>;
 
