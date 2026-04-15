@@ -1,14 +1,5 @@
 #include "momentum.h"
 
-using namespace Eigen;
-using Vector6f = Eigen::Matrix<float, 6, 1>;
-
-Vector6f Momentum::make_vec6(const Vector3f& rot, const Vector3f& trans) {
-    Vector6f v;
-    v << rot, trans;
-    return v;
-}
-
 Momentum::Momentum() {}
 
 // h = time step
@@ -36,37 +27,9 @@ Vector6f Momentum::calc_body_momentum(std::vector<Vector3f>& gamma_k, std::vecto
 // gamma_k1 = all vertex positions at time k+1
 // faces = each face has i,j,k
 // edges = edge struct
-Vector6f Momentum::calc_fluid_momentum(std::vector<Vector3f>& gamma_k, std::vector<Vector3f>& gamma_k1,
-                         std::vector<Vector3i>& faces, std::vector<Edge>& edges,
-                         float rho_f, float h) {
-    // Calculate face values
-    std::vector<float> face_areas(faces.size());
-    std::vector<Vector3f> face_normals(faces.size());
-    for (int f = 0; f < faces.size(); f++) {
-        int i = faces[f].x();
-        int j = faces[f].y();
-        int k = faces[f].z();
-        Vector3f normal = gamma_k[j] - gamma_k[i].cross(gamma_k[k] - gamma_k[i]);
-
-        face_areas[f] = 0.5f * normal.norm(); // area = 1/2 * ||N||
-        face_normals[f] = normal.normalized();
-    }
-
-    // Calculate delta
-    float total_area = 0.0f;
-    for (int f = 0; f < faces.size(); f++) {
-        total_area += face_areas[f];
-    }
-    float total_edge = 0.0f;
-    for (int e = 0; e < edges.size(); e++) {
-        // Given edge index, find vertices for length & bending angle
-        Edge curr_e = edges[e];
-        float alpha_ij = curr_e.alpha;
-        float l_ij = (gamma_k[curr_e.j] - gamma_k[curr_e.i]).norm();
-        total_edge += alpha_ij * l_ij;
-    }
-    float delta = total_area / total_edge;
-
+Vector6f Momentum::calc_fluid_momentum(std::vector<Vector3f>& gamma_k, std::vector<Vector3f>& gamma_k1, std::vector<Vector3i>& faces,
+                                       std::vector<float> face_areas, std::vector<Vector3f> face_normals,
+                                       std::vector<Edge>& edges, float rho_f, float h, float delta) {
     Vector3f l_f(0.0f);
     Vector3f p_f(0.0f);
     for (int f = 0; f < faces.size(); f++) {
