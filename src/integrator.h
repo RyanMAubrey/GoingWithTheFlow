@@ -25,12 +25,14 @@ class Integrator
 public:
     Integrator();
 
+    void LoadPose(const std::string& filepath, std::vector<Vector3f>& vertices, std::vector<Vector3i>& faces, std::vector<Edge>& edges);
+
     void CalculateFaceAttributes(std::vector<Vector3i>& faces, std::vector<Vector3f>& gamma);
     float CalculateDelta(std::vector<Vector3i>& faces, std::vector<Edge>& edges, std::vector<Vector3f>& gamma);
 
 private:
-    std::vector<Vector3f> vertices;
-    std::vector<Vector3f> faces;
+    //std::vector<Vector3f> vertices;
+    //std::vector<Vector3f> faces;
 
     std::vector<float> face_areas;
     std::vector<Vector3f> face_normals;

@@ -32,6 +32,7 @@ add_executable(${PROJECT_NAME}
     src/lift_and_drag.cpp
     src/main.cpp
     src/integrator.h src/integrator.cpp
+    src/mesh_loader.h
 )
 
 # GLEW: this creates its library and allows you to `#include "GL/glew.h"`
