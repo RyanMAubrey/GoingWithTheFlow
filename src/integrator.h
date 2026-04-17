@@ -25,6 +25,8 @@ class Integrator
 public:
     Integrator();
 
+    void Simulate();
+
     void LoadPose(const std::string& filepath, std::vector<Vector3f>& vertices, std::vector<Vector3i>& faces, std::vector<Edge>& edges);
 
     void CalculateFaceAttributes(std::vector<Vector3i>& faces, std::vector<Vector3f>& gamma);
@@ -36,6 +38,8 @@ private:
 
     std::vector<float> face_areas;
     std::vector<Vector3f> face_normals;
+
+    bool HasEdge(Vector3i& face, int i, int j);
 };
 
 #endif // INTEGRATOR_H
