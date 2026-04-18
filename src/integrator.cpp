@@ -9,9 +9,33 @@ Integrator::Integrator() {}
 
 void Integrator::Simulate() {
     // TODO: Algo 1 here
+    Momentum m;
+
+    for (int i = 1; i < total_poses; i++) {
+        // Variable set up for k and k+1
+        std::vector<Vector3f> vertices_k, vertices_k1;
+        std::vector<Vector3i> faces_k, faces_k1;
+        std::vector<Edge> edges_k, edges_k1;
+        std::vector<float> face_areas_k, face_areas_k1;
+        std::vector<Vector3f> face_normals_k, face_normals_k1;
+        std::string filepath_k = "GoingWithTheFlow/turtle_poses/frame_" + std::to_string(i) + ".obj";
+        std::string filepath_k1 = "GoingWithTheFlow/turtle_poses/frame_" + std::to_string(i+1) + ".obj";
+
+        // Load the two consecutive poses
+        LoadPose(filepath_k, vertices_k, faces_k, edges_k, face_areas_k, face_normals_k);
+        LoadPose(filepath_k1, vertices_k1, faces_k1, edges_k1, face_areas_k1, face_normals_k1);
+
+        // Extra variable calcs
+        float delta = CalculateDelta(faces_k, edges_k, vertices_k, face_areas_k);
+        std::vector<float> mass_density(vertices_k.size(), 1.0f); // Start with uniform mass (may change later)
+
+        Vector6f body_momentum = m.calc_body_momentum(vertices_k, vertices_k1, mass_density, h);
+        Vector6f fluid_momentum = m.calc_fluid_momentum(vertices_k, vertices_k1, faces_k, face_areas_k, face_normals_k, edges_k, rho_f, h, delta);
+    }
 }
 
-void Integrator::LoadPose(const std::string& filepath, std::vector<Vector3f>& vertices, std::vector<Vector3i>& faces, std::vector<Edge>& edges) {
+void Integrator::LoadPose(const std::string& filepath, std::vector<Vector3f>& vertices, std::vector<Vector3i>& faces, std::vector<Edge>& edges,
+                            std::vector<float>& face_areas, std::vector<Vector3f>& face_normals) {
     TriMesh m0 = load_obj(filepath);
     vertices = m0.vertices;
     faces = m0.faces;
@@ -30,7 +54,7 @@ void Integrator::LoadPose(const std::string& filepath, std::vector<Vector3f>& ve
     }
 
     // Compute face attributes
-    CalculateFaceAttributes(faces, vertices);
+    CalculateFaceAttributes(faces, vertices, face_areas, face_normals);
 
     // Save unique edges into final edge vector
     for (std::pair<int,int> e : unique_edges) {
@@ -66,7 +90,8 @@ bool Integrator::HasEdge(Vector3i& face, int i, int j) {
     return has_i && has_j;
 }
 
-void Integrator::CalculateFaceAttributes(std::vector<Vector3i>& faces, std::vector<Vector3f>& gamma) {
+void Integrator::CalculateFaceAttributes(std::vector<Vector3i>& faces, std::vector<Vector3f>& gamma,
+                                        std::vector<float>& face_areas, std::vector<Vector3f>& face_normals) {
     face_areas.resize(faces.size());
     face_normals.resize(faces.size());
 
@@ -81,7 +106,7 @@ void Integrator::CalculateFaceAttributes(std::vector<Vector3i>& faces, std::vect
     }
 }
 
-float Integrator::CalculateDelta(std::vector<Vector3i>& faces, std::vector<Edge>& edges, std::vector<Vector3f>& gamma) {
+float Integrator::CalculateDelta(std::vector<Vector3i>& faces, std::vector<Edge>& edges, std::vector<Vector3f>& gamma, std::vector<float>& face_areas) {
     float total_area = 0.0f;
     for (int f = 0; f < faces.size(); f++) {
         total_area += face_areas[f];

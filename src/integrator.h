@@ -27,17 +27,17 @@ public:
 
     void Simulate();
 
-    void LoadPose(const std::string& filepath, std::vector<Vector3f>& vertices, std::vector<Vector3i>& faces, std::vector<Edge>& edges);
+    void LoadPose(const std::string& filepath, std::vector<Vector3f>& vertices, std::vector<Vector3i>& faces, std::vector<Edge>& edges,
+                  std::vector<float>& face_areas, std::vector<Vector3f>& face_normals);
 
-    void CalculateFaceAttributes(std::vector<Vector3i>& faces, std::vector<Vector3f>& gamma);
-    float CalculateDelta(std::vector<Vector3i>& faces, std::vector<Edge>& edges, std::vector<Vector3f>& gamma);
+    void CalculateFaceAttributes(std::vector<Vector3i>& faces, std::vector<Vector3f>& gamma,
+                                 std::vector<float>& face_areas, std::vector<Vector3f>& face_normals);
+    float CalculateDelta(std::vector<Vector3i>& faces, std::vector<Edge>& edges, std::vector<Vector3f>& gamma, std::vector<float>& face_areas);
 
 private:
-    //std::vector<Vector3f> vertices;
-    //std::vector<Vector3f> faces;
-
-    std::vector<float> face_areas;
-    std::vector<Vector3f> face_normals;
+    int total_poses = 6;
+    float h = 8.0f / 60.0f; // 8 frames per pose for 60 fps (may need to change)
+    float rho_f = 1.0f; // Fluid density (may change)
 
     bool HasEdge(Vector3i& face, int i, int j);
 };
