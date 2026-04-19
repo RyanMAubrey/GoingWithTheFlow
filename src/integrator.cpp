@@ -1,6 +1,6 @@
 #include "integrator.h"
 #include "momentum.h"
-#include "lift_and_drag.cpp"
+//#include "lift_and_drag.cpp"
 #include "mesh_loader.h"
 
 #include <set>
@@ -18,8 +18,8 @@ void Integrator::Simulate() {
         std::vector<Edge> edges_k, edges_k1;
         std::vector<float> face_areas_k, face_areas_k1;
         std::vector<Vector3f> face_normals_k, face_normals_k1;
-        std::string filepath_k = "GoingWithTheFlow/turtle_poses/frame_" + std::to_string(i) + ".obj";
-        std::string filepath_k1 = "GoingWithTheFlow/turtle_poses/frame_" + std::to_string(i+1) + ".obj";
+        std::string filepath_k = "turtle_poses/frame_" + std::to_string(i) + ".obj";
+        std::string filepath_k1 = "turtle_poses/frame_" + std::to_string(i+1) + ".obj";
 
         // Load the two consecutive poses
         LoadPose(filepath_k, vertices_k, faces_k, edges_k, face_areas_k, face_normals_k);
@@ -62,7 +62,8 @@ void Integrator::LoadPose(const std::string& filepath, std::vector<Vector3f>& ve
         int j = e.second;
 
         // For bending angles, need to be adjacent triangles (share i & j)
-        int f1, f2 = -1;
+        int f1 = -1;
+        int f2 = -1;
         for (int f = 0; f < faces.size(); f++) {
             if (HasEdge(faces[f], i, j)) {
                 // Need to find two triangles (move on once both are found)

@@ -16,7 +16,7 @@ struct TriMesh {
 };
 
 
-TriMesh load_obj(const std::string& filepath, float scale = 1.0f, bool center = false) {
+inline TriMesh load_obj(const std::string& filepath, float scale = 1.0f, bool center = false) {
     std::vector<Vector3f> verts;
     std::vector<Vector3i> faces;
 
@@ -80,7 +80,7 @@ TriMesh load_obj(const std::string& filepath, float scale = 1.0f, bool center = 
 }
 
 
-std::vector<TriMesh> load_pose_sequence(const std::vector<std::string>& filepaths, float scale = 1.0f, bool center = false) {
+inline std::vector<TriMesh> load_pose_sequence(const std::vector<std::string>& filepaths, float scale = 1.0f, bool center = false) {
     std::vector<TriMesh> meshes;
     for (const auto& fp : filepaths) {
         meshes.push_back(load_obj(fp, scale, center));

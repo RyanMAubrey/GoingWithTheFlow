@@ -33,6 +33,8 @@ add_executable(${PROJECT_NAME}
     src/main.cpp
     src/integrator.h src/integrator.cpp
     src/mesh_loader.h
+    src/bodydebugwidget.h src/bodydebugwidget.cpp
+    src/fluiddebugwidget.h src/fluiddebugwidget.cpp
 )
 
 # GLEW: this creates its library and allows you to `#include "GL/glew.h"`

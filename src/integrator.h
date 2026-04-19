@@ -36,7 +36,7 @@ public:
 
 private:
     int total_poses = 6;
-    float h = 8.0f / 60.0f; // 8 frames per pose for 60 fps (may need to change)
+    float h = 7.0; // 8 frames per pose (may need to change)
     float rho_f = 1.0f; // Fluid density (may change)
 
     bool HasEdge(Vector3i& face, int i, int j);
