@@ -13,66 +13,75 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Specifies required Qt components
-find_package(Qt6 REQUIRED COMPONENTS Core)
-find_package(Qt6 REQUIRED COMPONENTS Concurrent)
-find_package(Qt6 REQUIRED COMPONENTS Xml)
-find_package(Qt6 REQUIRED COMPONENTS Widgets)
-find_package(Qt6 REQUIRED COMPONENTS OpenGL)
-find_package(Qt6 REQUIRED COMPONENTS OpenGLWidgets)
-find_package(Qt6 REQUIRED COMPONENTS Gui)
-
-# Allows you to include files from within those directories, without prefixing their filepaths
+# Shared include paths
 include_directories(src)
 include_directories(libs)
 
-# Specifies .cpp and .h files to be passed to the compiler
-add_executable(${PROJECT_NAME}
-    src/momentum.h src/momentum.cpp
+# ==============================================================================
+# Forces Test Target
+# ==============================================================================
+add_executable(test_forces
+    src/test_forces.cpp
     src/lift_and_drag.cpp
-    src/main.cpp
-    src/integrator.h src/integrator.cpp
-    src/mesh_loader.h
-    src/bodydebugwidget.h src/bodydebugwidget.cpp
-    src/fluiddebugwidget.h src/fluiddebugwidget.cpp
 )
+target_include_directories(test_forces PRIVATE src Eigen)
 
-# GLEW: this creates its library and allows you to `#include "GL/glew.h"`
-add_library(StaticGLEW STATIC glew/src/glew.c)
-include_directories(${PROJECT_NAME} PRIVATE glew/include)
+# ==============================================================================
+# Main Application
+# ==============================================================================
+find_package(Qt6 QUIET COMPONENTS Core Concurrent Xml Widgets OpenGL OpenGLWidgets Gui)
 
-# Specifies libraries to be linked (Qt components, glew, etc)
-target_link_libraries(${PROJECT_NAME} PRIVATE
-    Qt::Concurrent
-    Qt::Core
-    Qt::Gui
-    Qt::OpenGL
-    Qt::OpenGLWidgets
-    Qt::Widgets
-    Qt::Xml
-    StaticGLEW
-)
+if (Qt6_FOUND)
+    # Specifies .cpp and .h files to be passed to the compiler
+    add_executable(${PROJECT_NAME}
+        src/momentum.h src/momentum.cpp
+        src/lift_and_drag.cpp
+        src/main.cpp
+        src/integrator.h src/integrator.cpp
+        src/mesh_loader.h
+        src/bodydebugwidget.h src/bodydebugwidget.cpp
+        src/fluiddebugwidget.h src/fluiddebugwidget.cpp
+    )
 
-# This allows you to `#include "Eigen/..."`
-target_include_directories(${PROJECT_NAME} PRIVATE
-    Eigen
-)
+    # GLEW: this creates its library and allows you to `#include "GL/glew.h"`
+    add_library(StaticGLEW STATIC glew/src/glew.c)
+    include_directories(${PROJECT_NAME} PRIVATE glew/include)
 
-# Specifies other files
-qt6_add_resources(${PROJECT_NAME} "Resources"
-    PREFIX
-        "/"
-    FILES
-       # resources/shaders/shader.frag
-)
+    # Specifies libraries to be linked (Qt components, glew, etc)
+    target_link_libraries(${PROJECT_NAME} PRIVATE
+        Qt::Concurrent
+        Qt::Core
+        Qt::Gui
+        Qt::OpenGL
+        Qt::OpenGLWidgets
+        Qt::Widgets
+        Qt::Xml
+        StaticGLEW
+    )
 
-# GLEW: this provides support for Windows (including 64-bit)
-if (WIN32)
-  add_compile_definitions(GLEW_STATIC)
-  target_link_libraries(${PROJECT_NAME} PRIVATE
-    opengl32
-    glu32
-  )
+    # This allows you to `#include "Eigen/..."`
+    target_include_directories(${PROJECT_NAME} PRIVATE
+        Eigen
+    )
+
+    # Specifies other files
+    qt6_add_resources(${PROJECT_NAME} "Resources"
+        PREFIX
+            "/"
+        FILES
+           # resources/shaders/shader.frag
+    )
+
+    # GLEW: this provides support for Windows (including 64-bit)
+    if (WIN32)
+      add_compile_definitions(GLEW_STATIC)
+      target_link_libraries(${PROJECT_NAME} PRIVATE
+        opengl32
+        glu32
+      )
+    endif()
+else()
+    message(STATUS "Qt6 not found — only building test_forces (main app skipped)")
 endif()
 
 # Set this flag to silence warnings on Windows

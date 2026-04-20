@@ -73,7 +73,7 @@ Vector6f calc_lift_and_drag(const std::vector<Vector3f>& pos_k,
     const Matrix3f A_T = pose.block<3,3>(0,0).transpose();
     const Vector3f u_bg_body = A_T * background_flow;
 
-    // Unpack the body-frame twist body_twist = (omega, v)
+    // Unpack the body-frame twist
     const Vector3f omega = body_twist.head<3>();
     const Vector3f v     = body_twist.tail<3>();
 
@@ -90,11 +90,13 @@ Vector6f calc_lift_and_drag(const std::vector<Vector3f>& pos_k,
         // Centroid of the triangle
         const Vector3f centroid = (pos_k[i] + pos_k[j] + pos_k[k]) / 3.0f;
 
-        // Unnormalized normal = (p_j - p_i) x (p_k - p_i); area = 0.5 * |N|
-        const Vector3f N_raw = (pos_k[j] - pos_k[i]).cross(pos_k[k] - pos_k[i]);
-        const float A_ijk    = 0.5f * N_raw.norm();
-        if (A_ijk < 1e-12f) continue;              
-        const Vector3f n_ijk = N_raw / (2.0f * A_ijk);  
+        // Unnormalized normal = (p_j - p_i) x (p_k - p_i)
+        const Vector3f raw_face_normal  = (pos_k[j] - pos_k[i]).cross(pos_k[k] - pos_k[i]);
+
+        // Area = 0.5 * |N|
+        const float face_area           = 0.5f * raw_face_normal.norm();
+        if (face_area < 1e-12f) continue;
+        const Vector3f face_normal = raw_face_normal / (2.0f * face_area);
 
         // Face velocity in the body frame
         // (1) rigid contribution from the current twist Y
@@ -114,11 +116,10 @@ Vector6f calc_lift_and_drag(const std::vector<Vector3f>& pos_k,
         if (u_mag < 1e-12f) continue;             
 
         // Prop. 1:  F_face = -rho_f * A * |u| * <u,n> * n
-        const float un = u.dot(n_ijk);
-        const Vector3f f_face = -fluid_density * A_ijk * u_mag * un * n_ijk;
+        const float un = u.dot(face_normal);
+        const Vector3f f_face = -fluid_density * face_area * u_mag * un * face_normal;
 
         // Accumulate as a body-frame wrench
-        // Force applied at the centroid contributes torque centroid x f_face.
         force  += f_face;
         torque += centroid.cross(f_face);
     }
