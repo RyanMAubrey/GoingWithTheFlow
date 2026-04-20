@@ -1,4 +1,5 @@
 #include "integrator.h"
+#include "inertia.h"
 #include "mesh_loader.h"
 #include <iostream>
 #include <cassert>
@@ -444,6 +445,143 @@ void test_total_force_neutrally_buoyant() {
 }
 
 
+// ---- Test group 5: inertia matrices (Alg. 3 & 4) ---------------------------
+
+void test_body_inertia_symmetry() {
+    std::cout << "test_body_inertia_symmetry... ";
+
+    std::vector<Vector3f> verts;
+    std::vector<Vector3i> faces;
+    make_unit_cube(verts, faces);
+
+    std::vector<float> rho(verts.size(), 1.0f);
+    Matrix6f M = calc_body_inertia(verts, rho);
+
+    assert((M - M.transpose()).norm() < 1e-5f);
+    std::cout << "PASSED" << std::endl;
+}
+
+void test_body_inertia_matches_momentum() {
+    std::cout << "test_body_inertia_matches_momentum... ";
+
+    // For pure rigid motion, M_b * twist should equal calc_body_momentum result.
+    std::vector<Vector3f> verts_k;
+    std::vector<Vector3i> faces;
+    make_unit_plate(verts_k, faces);
+
+    // Rigid twist: spin about Z and translate in X
+    Vector6f twist = Vector6f::Zero();
+    twist[2] = 0.5f;  // omega_z
+    twist[3] = 1.0f;  // v_x
+
+    float h = 1.0f / 200.0f;
+    std::vector<float> rho(verts_k.size(), 2.0f);
+
+    // Build k+1 by applying rigid twist for one step
+    std::vector<Vector3f> verts_k1 = verts_k;
+    Vector3f omega = twist.head<3>();
+    Vector3f v     = twist.tail<3>();
+    for (int i = 0; i < (int)verts_k.size(); i++) {
+        verts_k1[i] = verts_k[i] + h * (omega.cross(verts_k[i]) + v);
+    }
+
+    // Direct momentum computation (Briana's formula)
+    Vector3f l_direct = Vector3f::Zero(), p_direct = Vector3f::Zero();
+    for (int i = 0; i < (int)verts_k.size(); i++) {
+        Vector3f gp = (verts_k1[i] - verts_k[i]) / h;
+        l_direct += rho[i] * verts_k[i].cross(gp);
+        p_direct += rho[i] * gp;
+    }
+    Vector6f mom_direct = make_vec6(l_direct, p_direct);
+
+    // Matrix multiply
+    Matrix6f M = calc_body_inertia(verts_k, rho);
+    Vector6f mom_matrix = M * twist;
+
+    assert(approx_vec6(mom_direct, mom_matrix, 1e-4f));
+    std::cout << "PASSED" << std::endl;
+}
+
+void test_added_mass_symmetry() {
+    std::cout << "test_added_mass_symmetry... ";
+
+    std::vector<Vector3f> verts;
+    std::vector<Vector3i> faces;
+    make_unit_cube(verts, faces);
+
+    // Compute face attributes inline (mirrors Integrator::CalculateFaceAttributes)
+    std::vector<float> areas(faces.size());
+    std::vector<Vector3f> normals(faces.size());
+    for (int f = 0; f < (int)faces.size(); f++) {
+        Vector3f e1 = verts[faces[f].y()] - verts[faces[f].x()];
+        Vector3f e2 = verts[faces[f].z()] - verts[faces[f].x()];
+        Vector3f N  = e1.cross(e2);
+        areas[f]   = 0.5f * N.norm();
+        normals[f] = N.normalized();
+    }
+
+    float delta = 1.0f;
+    Matrix6f M = calc_added_mass(verts, faces, areas, normals, 1.0f, delta);
+
+    assert((M - M.transpose()).norm() < 1e-5f);
+    std::cout << "PASSED" << std::endl;
+}
+
+void test_added_mass_matches_fluid_momentum() {
+    std::cout << "test_added_mass_matches_fluid_momentum... ";
+
+    // For pure rigid motion, M_f * twist should equal calc_fluid_momentum result.
+    std::vector<Vector3f> verts_k;
+    std::vector<Vector3i> faces;
+    make_unit_plate(verts_k, faces);
+
+    std::vector<float> areas(faces.size());
+    std::vector<Vector3f> normals(faces.size());
+    for (int f = 0; f < (int)faces.size(); f++) {
+        Vector3f e1 = verts_k[faces[f].y()] - verts_k[faces[f].x()];
+        Vector3f e2 = verts_k[faces[f].z()] - verts_k[faces[f].x()];
+        Vector3f N  = e1.cross(e2);
+        areas[f]   = 0.5f * N.norm();
+        normals[f] = N.normalized();
+    }
+
+    // Rigid twist: translate in Z (normal to plate)
+    Vector6f twist = Vector6f::Zero();
+    twist[5] = 1.0f;  // v_z
+
+    float h     = 1.0f / 200.0f;
+    float rho_f = 1.0f;
+    float delta = 1.0f;
+
+    // Build k+1 by applying rigid twist
+    std::vector<Vector3f> verts_k1 = verts_k;
+    Vector3f omega = twist.head<3>();
+    Vector3f v_t   = twist.tail<3>();
+    for (int i = 0; i < (int)verts_k.size(); i++) {
+        verts_k1[i] = verts_k[i] + h * (omega.cross(verts_k[i]) + v_t);
+    }
+
+    // Direct fluid momentum
+    Vector3f l_direct = Vector3f::Zero(), p_direct = Vector3f::Zero();
+    for (int f = 0; f < (int)faces.size(); f++) {
+        int i = faces[f].x(), j = faces[f].y(), k = faces[f].z();
+        Vector3f g  = (verts_k[i]  + verts_k[j]  + verts_k[k])  / 3.0f;
+        Vector3f gp = ((verts_k1[i]-verts_k[i]) + (verts_k1[j]-verts_k[j]) + (verts_k1[k]-verts_k[k])) / (3.0f * h);
+        float un = gp.dot(normals[f]);
+        l_direct += rho_f * delta * un * g.cross(normals[f]) * areas[f];
+        p_direct += rho_f * delta * un * normals[f] * areas[f];
+    }
+    Vector6f mom_direct = make_vec6(l_direct, p_direct);
+
+    // Matrix multiply
+    Matrix6f M = calc_added_mass(verts_k, faces, areas, normals, rho_f, delta);
+    Vector6f mom_matrix = M * twist;
+
+    assert(approx_vec6(mom_direct, mom_matrix, 1e-4f));
+    std::cout << "PASSED" << std::endl;
+}
+
+
 // ---- main -------------------------------------------------------------------
 
 int main() {
@@ -472,6 +610,13 @@ int main() {
 
     std::cout << "--- Group 4: Total Force Integration ---" << std::endl;
     test_total_force_neutrally_buoyant();
+    std::cout << std::endl;
+
+    std::cout << "--- Group 5: Inertia Matrices (Alg. 3 & 4) ---" << std::endl;
+    test_body_inertia_symmetry();
+    test_body_inertia_matches_momentum();
+    test_added_mass_symmetry();
+    test_added_mass_matches_fluid_momentum();
     std::cout << std::endl;
 
     std::cout << "=== ALL TESTS PASSED ===" << std::endl;

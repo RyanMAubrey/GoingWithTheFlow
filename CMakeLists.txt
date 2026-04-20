@@ -23,6 +23,7 @@ include_directories(libs)
 add_executable(test_forces
     src/test_forces.cpp
     src/lift_and_drag.cpp
+    src/inertia.cpp
 )
 target_include_directories(test_forces PRIVATE src Eigen)
 
@@ -36,6 +37,7 @@ if (Qt6_FOUND)
     add_executable(${PROJECT_NAME}
         src/momentum.h src/momentum.cpp
         src/lift_and_drag.cpp
+        src/inertia.h src/inertia.cpp
         src/main.cpp
         src/integrator.h src/integrator.cpp
         src/mesh_loader.h
