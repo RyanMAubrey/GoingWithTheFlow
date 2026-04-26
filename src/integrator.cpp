@@ -1,9 +1,12 @@
 #include "integrator.h"
 #include "momentum.h"
+#include "inertia.h"
 //#include "lift_and_drag.cpp"
 #include "mesh_loader.h"
 
+#include <iostream>
 #include <set>
+#include <algorithm>
 
 Integrator::Integrator() {}
 
@@ -29,8 +32,14 @@ void Integrator::Simulate() {
         float delta = CalculateDelta(faces_k, edges_k, vertices_k, face_areas_k);
         std::vector<float> mass_density(vertices_k.size(), 1.0f); // Start with uniform mass (may change later)
 
+        Matrix6f body_inertia = calc_body_inertia(vertices_k, mass_density);
+        Matrix6f added_mass = calc_added_mass(vertices_k, faces_k,face_areas_k, face_normals_k, rho_f, delta);
+        Matrix6f kirchhoff_tensor = body_inertia + added_mass;
+
         Vector6f body_momentum = m.calc_body_momentum(vertices_k, vertices_k1, mass_density, h);
         Vector6f fluid_momentum = m.calc_fluid_momentum(vertices_k, vertices_k1, faces_k, face_areas_k, face_normals_k, edges_k, rho_f, h, delta);
+        Vector6f combined_momentum = body_momentum + fluid_momentum;
+
     }
 }
 
