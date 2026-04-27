@@ -43,6 +43,7 @@ if (Qt6_FOUND)
         src/mesh_loader.h
         src/bodydebugwidget.h src/bodydebugwidget.cpp
         src/fluiddebugwidget.h src/fluiddebugwidget.cpp
+        src/inertiadebugwidget.h src/inertiadebugwidget.cpp
     )
 
     # GLEW: this creates its library and allows you to `#include "GL/glew.h"`

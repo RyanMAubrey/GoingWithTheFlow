@@ -3,6 +3,7 @@
 
 #include "bodydebugwidget.h"
 #include "fluiddebugwidget.h"
+#include "inertiadebugwidget.h"
 
 int main(int argc, char *argv[])
 {
@@ -15,8 +16,9 @@ int main(int argc, char *argv[])
 
     //BodyDebugWidget w;
     //FluidDebugWidget w;
-    //w.resize(800, 600);
-    //w.show();
+    InertiaDebugWidget w(1);
+    w.resize(800, 600);
+    w.show();
 
     return app.exec();
 }
