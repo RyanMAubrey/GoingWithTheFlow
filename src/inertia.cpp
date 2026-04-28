@@ -44,7 +44,7 @@ Matrix6f calc_body_inertia(const std::vector<Vector3f>& gamma,
     return M;
 }
 
-// Algorithm 4: Fluid added mass matrix M_f
+// Algorithm 5: Fluid added mass matrix M_f
 //
 // Derived from calc_fluid_momentum: for rigid motion gamma_prime_ijk = omega x gamma_ijk + v,
 // dot(gamma_prime, n) = dot(q, omega) + dot(n, v)  where q = gamma x n.
