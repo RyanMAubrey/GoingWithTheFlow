@@ -1,6 +1,8 @@
 #ifndef INTEGRATOR_H
 #define INTEGRATOR_H
 
+#include <mesh_loader.h>
+
 #include <vector>
 #include <Eigen/Dense>
 
@@ -28,7 +30,7 @@ public:
 
     void Simulate();
 
-    void LoadPose(const std::string& filepath, std::vector<Vector3f>& vertices, std::vector<Vector3i>& faces, std::vector<Edge>& edges,
+    TriMesh LoadPose(const std::string& filepath, std::vector<Vector3f>& vertices, std::vector<Vector3i>& faces, std::vector<Edge>& edges,
                   std::vector<float>& face_areas, std::vector<Vector3f>& face_normals);
 
     void CalculateFaceAttributes(std::vector<Vector3i>& faces, std::vector<Vector3f>& gamma,

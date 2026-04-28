@@ -3,8 +3,11 @@
 #include <QDebug>
 #include <QDir>
 #include <QCoreApplication>
+#include <QImage>
+
 #include <algorithm>
 #include <limits>
+#include <filesystem>
 
 #ifdef __APPLE__
 #pragma clang diagnostic push
@@ -13,6 +16,7 @@
 #else
 #include <GL/gl.h>
 #endif
+
 using namespace Eigen;
 
 FluidDebugWidget::FluidDebugWidget(QWidget *parent)
@@ -20,23 +24,79 @@ FluidDebugWidget::FluidDebugWidget(QWidget *parent)
 {
 }
 
+GLuint FluidDebugWidget::loadTextureQt(const std::string& path) {
+    QImage img(QString::fromStdString(path));
+
+    if (img.isNull()) {
+        qDebug() << "Failed to load texture:" << QString::fromStdString(path);
+        return 0;
+    }
+
+    img = img.convertToFormat(QImage::Format_RGBA8888).mirrored();
+
+    GLuint tex = 0;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+
+    glTexImage2D(
+        GL_TEXTURE_2D,
+        0,
+        GL_RGBA,
+        img.width(),
+        img.height(),
+        0,
+        GL_RGBA,
+        GL_UNSIGNED_BYTE,
+        img.bits()
+        );
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    qDebug() << "Loaded texture:" << QString::fromStdString(path)
+             << "id:" << tex
+             << "size:" << img.width() << img.height();
+
+    return tex;
+}
+
+void FluidDebugWidget::loadMeshTextures(const TriMesh& mesh, const std::string& objPath) {
+    std::filesystem::path objFile(objPath);
+    std::string objDir = objFile.parent_path().string();
+
+    for (const Material& mat : mesh.materials) {
+        if (mat.map_kd.empty()) {
+            continue;
+        }
+
+        if (m_textures.count(mat.name)) {
+            continue;
+        }
+
+        std::string texPath;
+
+        if (objDir.empty()) {
+            texPath = mat.map_kd;
+        } else {
+            texPath = objDir + "/" + mat.map_kd;
+        }
+
+        GLuint tex = loadTextureQt(texPath);
+        m_textures[mat.name] = tex;
+
+        qDebug() << "Material:" << QString::fromStdString(mat.name)
+                 << "map_Kd:" << QString::fromStdString(mat.map_kd);
+    }
+}
+
 void FluidDebugWidget::loadFrames() {
     qDebug() << "Current working dir:" << QDir::currentPath();
     qDebug() << "App dir:" << QCoreApplication::applicationDirPath();
 
-    // Keep TriMesh copies for drawing
-    m_mesh_k  = load_obj("turtle_poses/frame_32.obj");
-    m_mesh_k1 = load_obj("turtle_poses/frame_40.obj");
-
-    qDebug() << "frame 1 verts:" << m_mesh_k.vertices.size()
-             << "faces:" << m_mesh_k.faces.size();
-    qDebug() << "frame 8 verts:" << m_mesh_k1.vertices.size()
-             << "faces:" << m_mesh_k1.faces.size();
-
-    if (m_mesh_k.vertices.size() != m_mesh_k1.vertices.size()) {
-        qDebug() << "ERROR: frame_1 and frame_8 do not have matching vertex counts";
-        return;
-    }
+    std::string file_k  = "turtle_poses/frame_24.obj";
+    std::string file_k1 = "turtle_poses/frame_32.obj";
 
     Integrator integrator;
     Momentum m;
@@ -47,15 +107,60 @@ void FluidDebugWidget::loadFrames() {
     std::vector<float> face_areas_k, face_areas_k1;
     std::vector<Vector3f> face_normals_k, face_normals_k1;
 
-    integrator.LoadPose("turtle_poses/frame_1.obj",
-                        vertices_k, faces_k, edges_k, face_areas_k, face_normals_k);
+    // One call now loads BOTH:
+    // - full TriMesh for drawing/materials/textures
+    // - physics arrays for momentum
+    m_mesh_k = integrator.LoadPose(
+        file_k,
+        vertices_k,
+        faces_k,
+        edges_k,
+        face_areas_k,
+        face_normals_k
+        );
 
-    integrator.LoadPose("turtle_poses/frame_8.obj",
-                        vertices_k1, faces_k1, edges_k1, face_areas_k1, face_normals_k1);
+    m_mesh_k1 = integrator.LoadPose(
+        file_k1,
+        vertices_k1,
+        faces_k1,
+        edges_k1,
+        face_areas_k1,
+        face_normals_k1
+        );
+
+    loadMeshTextures(m_mesh_k, file_k);
+
+    qDebug() << "frame k verts:" << m_mesh_k.vertices.size()
+             << "faces:" << m_mesh_k.faces.size()
+             << "materials:" << m_mesh_k.materials.size()
+             << "texcoords:" << m_mesh_k.texcoords.size()
+             << "face tex ids:" << m_mesh_k.face_texcoord_ids.size()
+             << "face material ids:" << m_mesh_k.face_material_ids.size();
+
+    if (m_mesh_k.vertices.size() != m_mesh_k1.vertices.size()) {
+        qDebug() << "ERROR: frames do not have matching vertex counts";
+        return;
+    }
+
+    for (int i = 0; i < m_mesh_k.materials.size(); i++) {
+        const Material& mat = m_mesh_k.materials[i];
+
+        qDebug() << "material" << i
+                 << QString::fromStdString(mat.name)
+                 << "Kd:"
+                 << mat.kd.x() << mat.kd.y() << mat.kd.z()
+                 << "map_Kd:"
+                 << QString::fromStdString(mat.map_kd);
+    }
 
     float h = 7.0f;
     float rho_f = 1.0f;
-    float delta = integrator.CalculateDelta(faces_k, edges_k, vertices_k, face_areas_k);
+    float delta = integrator.CalculateDelta(
+        faces_k,
+        edges_k,
+        vertices_k,
+        face_areas_k
+        );
 
     qDebug() << "delta:" << delta;
 
@@ -85,13 +190,17 @@ void FluidDebugWidget::computeViewTransform() {
         return;
     }
 
-    Vector3f minV(std::numeric_limits<float>::max(),
-                  std::numeric_limits<float>::max(),
-                  std::numeric_limits<float>::max());
+    Vector3f minV(
+        std::numeric_limits<float>::max(),
+        std::numeric_limits<float>::max(),
+        std::numeric_limits<float>::max()
+        );
 
-    Vector3f maxV(-std::numeric_limits<float>::max(),
-                  -std::numeric_limits<float>::max(),
-                  -std::numeric_limits<float>::max());
+    Vector3f maxV(
+        -std::numeric_limits<float>::max(),
+        -std::numeric_limits<float>::max(),
+        -std::numeric_limits<float>::max()
+        );
 
     for (const auto& v : m_mesh_k.vertices) {
         minV = minV.cwiseMin(v);
@@ -122,6 +231,8 @@ void FluidDebugWidget::initializeGL() {
 
     glEnable(GL_DEPTH_TEST);
     glDisable(GL_CULL_FACE);
+    glDisable(GL_LIGHTING);
+
     glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 
     loadFrames();
@@ -131,39 +242,97 @@ void FluidDebugWidget::resizeGL(int w, int h) {
     glViewport(0, 0, w, h);
 
     m_proj.setToIdentity();
-    m_proj.perspective(45.0f, float(w) / float(std::max(1, h)), 0.1f, 100.0f);
+    m_proj.perspective(
+        45.0f,
+        float(w) / float(std::max(1, h)),
+        0.1f,
+        100.0f
+        );
 }
 
 void FluidDebugWidget::drawMesh(const TriMesh& mesh) {
-    glColor3f(0.75f, 0.75f, 0.75f);
+    for (int f = 0; f < mesh.faces.size(); f++) {
+        int mat_id = -1;
 
-    glBegin(GL_TRIANGLES);
-    for (const auto& f : mesh.faces) {
-        const auto a = toViewSpace(mesh.vertices[f[0]]);
-        const auto b = toViewSpace(mesh.vertices[f[1]]);
-        const auto c = toViewSpace(mesh.vertices[f[2]]);
+        if (f < mesh.face_material_ids.size()) {
+            mat_id = mesh.face_material_ids[f];
+        }
 
-        glVertex3f(a.x(), a.y(), a.z());
-        glVertex3f(b.x(), b.y(), b.z());
-        glVertex3f(c.x(), c.y(), c.z());
+        GLuint tex = 0;
+        Vector3f kd(0.75f, 0.75f, 0.75f);
+
+        if (mat_id >= 0 && mat_id < mesh.materials.size()) {
+            const Material& mat = mesh.materials[mat_id];
+            kd = mat.kd;
+
+            if (!mat.map_kd.empty() && m_textures.count(mat.name)) {
+                tex = m_textures[mat.name];
+            }
+        }
+
+        bool hasTexture = tex != 0;
+
+        if (hasTexture) {
+            glEnable(GL_TEXTURE_2D);
+            glBindTexture(GL_TEXTURE_2D, tex);
+
+            // VERY IMPORTANT:
+            // Do not use Kd here. Kd may be black.
+            glColor3f(1.0f, 1.0f, 1.0f);
+        } else {
+            glDisable(GL_TEXTURE_2D);
+            glBindTexture(GL_TEXTURE_2D, 0);
+            glColor3f(kd.x(), kd.y(), kd.z());
+        }
+
+        const Vector3i& face = mesh.faces[f];
+
+        Vector3i texFace(-1, -1, -1);
+        if (f < mesh.face_texcoord_ids.size()) {
+            texFace = mesh.face_texcoord_ids[f];
+        }
+
+        glBegin(GL_TRIANGLES);
+
+        for (int corner = 0; corner < 3; corner++) {
+            int vi = face[corner];
+            int ti = texFace[corner];
+
+            if (hasTexture && ti >= 0 && ti < mesh.texcoords.size()) {
+                Vector2f uv = mesh.texcoords[ti];
+                glTexCoord2f(uv.x(), uv.y());
+            }
+
+            Vector3f v = toViewSpace(mesh.vertices[vi]);
+            glVertex3f(v.x(), v.y(), v.z());
+        }
+
+        glEnd();
     }
-    glEnd();
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glDisable(GL_TEXTURE_2D);
 }
 
 void FluidDebugWidget::drawMotionLines(const TriMesh& mesh_k, const TriMesh& mesh_k1) {
     int n = std::min((int)mesh_k.vertices.size(), (int)mesh_k1.vertices.size());
 
+    glDisable(GL_TEXTURE_2D);
     glColor3f(1.0f, 0.0f, 0.0f);
     glLineWidth(1.0f);
 
     glBegin(GL_LINES);
+
     for (int i = 0; i < n; i++) {
         Vector3f a = toViewSpace(mesh_k.vertices[i]);
         Vector3f b = toViewSpace(mesh_k1.vertices[i]);
 
         Vector3f dir = b - a;
         float len = dir.norm();
-        if (len < 1e-6f) continue;
+
+        if (len < 1e-6f) {
+            continue;
+        }
 
         dir.normalize();
 
@@ -182,10 +351,13 @@ void FluidDebugWidget::drawMotionLines(const TriMesh& mesh_k, const TriMesh& mes
         glVertex3f(b.x(), b.y(), b.z());
         glVertex3f(right.x(), right.y(), right.z());
     }
+
     glEnd();
 }
 
 void FluidDebugWidget::drawFluidMomentum() {
+    glDisable(GL_TEXTURE_2D);
+
     Vector3f center = toViewSpace(m_center);
 
     Vector3f angular(
@@ -211,7 +383,10 @@ void FluidDebugWidget::drawFluidMomentum() {
 
         Vector3f dir = end - start;
         float len = dir.norm();
-        if (len < 1e-6f) return;
+
+        if (len < 1e-6f) {
+            return;
+        }
 
         dir.normalize();
 
@@ -240,10 +415,7 @@ void FluidDebugWidget::drawFluidMomentum() {
         glEnd();
     };
 
-    // blue = linear momentum
     drawArrow(center, linear, linearScale, 0.0f, 0.5f, 1.0f);
-
-    // green = angular momentum
     drawArrow(center, angular, angularScale, 0.0f, 1.0f, 0.0f);
 
     glLineWidth(1.0f);

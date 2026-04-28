@@ -2,7 +2,6 @@
 #include "momentum.h"
 #include "inertia.h"
 //#include "lift_and_drag.cpp"
-#include "mesh_loader.h"
 
 #include <iostream>
 #include <set>
@@ -43,7 +42,7 @@ void Integrator::Simulate() {
     }
 }
 
-void Integrator::LoadPose(const std::string& filepath, std::vector<Vector3f>& vertices, std::vector<Vector3i>& faces, std::vector<Edge>& edges,
+TriMesh Integrator::LoadPose(const std::string& filepath, std::vector<Vector3f>& vertices, std::vector<Vector3i>& faces, std::vector<Edge>& edges,
                             std::vector<float>& face_areas, std::vector<Vector3f>& face_normals) {
     TriMesh m0 = load_obj(filepath);
     vertices = m0.vertices;
@@ -92,6 +91,7 @@ void Integrator::LoadPose(const std::string& filepath, std::vector<Vector3f>& ve
         }
         edges.push_back({i, j, alpha});
     }
+    return m0;
 }
 
 bool Integrator::HasEdge(Vector3i& face, int i, int j) {

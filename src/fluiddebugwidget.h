@@ -4,6 +4,7 @@
 #include <QOpenGLFunctions>
 #include <QMatrix4x4>
 #include <Eigen/Dense>
+#include <unordered_map>
 
 #include "mesh_loader.h"
 #include "momentum.h"
@@ -30,6 +31,8 @@ private:
     float m_scale = 1.0f;
     Vector6f m_fluidMomentum = Vector6f::Zero();
 
+    std::unordered_map<std::string, GLuint> m_textures;
+
     void loadFrames();
     void computeViewTransform();
     Eigen::Vector3f toViewSpace(const Eigen::Vector3f& v) const;
@@ -37,4 +40,7 @@ private:
     void drawMesh(const TriMesh& mesh);
     void drawMotionLines(const TriMesh& mesh_k, const TriMesh& mesh_k1);
     void drawFluidMomentum();
+
+    GLuint loadTextureQt(const std::string& path);
+    void loadMeshTextures(const TriMesh& mesh, const std::string& objPath);
 };
