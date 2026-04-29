@@ -1,6 +1,6 @@
 # This file uses centimeters as units for non-parametric coordinates.
 
-mtllib frame_1.mtl
+mtllib frame_0.mtl
 g blendShape1Set skinCluster1Set tweakSet1
 v 0.000586 5.134388 -27.640169
 v 0.000586 6.011529 -29.421000
