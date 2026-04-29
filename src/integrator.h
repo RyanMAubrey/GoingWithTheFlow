@@ -39,7 +39,8 @@ public:
 
 private:
     int total_poses = 6;
-    float h = 7.0; // 8 frames per pose (may need to change)
+    float framesPerPose = 7.0; // 8 frames per pose (may need to change)
+    float h = 1.0/400.0; // Integrator timestep
     float rho_f = 1.0f; // Fluid density (may change)
 
     bool HasEdge(Vector3i& face, int i, int j);

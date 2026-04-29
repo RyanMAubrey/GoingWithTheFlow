@@ -1,7 +1,7 @@
 #include "integrator.h"
 #include "momentum.h"
 #include "inertia.h"
-//#include "lift_and_drag.cpp"
+#include "lift_and_drag.cpp"
 
 #include <iostream>
 #include <set>
