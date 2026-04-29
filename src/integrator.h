@@ -37,11 +37,22 @@ public:
                                  std::vector<float>& face_areas, std::vector<Vector3f>& face_normals);
     float CalculateDelta(std::vector<Vector3i>& faces, std::vector<Edge>& edges, std::vector<Vector3f>& gamma, std::vector<float>& face_areas);
 
+    // Load all pose OBJs in order.
+    void LoadAllPoses();
+
 private:
-    int total_poses = 6;
-    float framesPerPose = 7.0; // 8 frames per pose (may need to change)
-    float h = 1.0/400.0; // Integrator timestep
-    float rho_f = 1.0f; // Fluid density (may change)
+    int total_frames = 6;                               // temporary, update later with all 40 frames
+    float stroke_duration = 1.0f;                       // seconds per full swim stroke
+    float h = stroke_duration / (total_frames -1 );     // one integrator step per consecutive pose pair
+    int num_strokes = 3;                                // how many strokes to simulate
+    float rho_f = 998.0f;                               // fluid density (water)
+
+    // Pose storage from LoadAllPoses().
+    std::vector<std::vector<Vector3f>> all_vertices;    // arrays of vertices
+    std::vector<Vector3i> shared_faces;
+    std::vector<Edge> shared_edges;
+    std::vector<float> shared_face_areas_scratch;        
+    std::vector<Vector3f> shared_face_normals_scratch;   
 
     bool HasEdge(Vector3i& face, int i, int j);
 };
