@@ -41,11 +41,14 @@ public:
     void LoadAllPoses();
 
 private:
-    int total_frames = 6;                               // temporary, update later with all 40 frames
-    float stroke_duration = 1.0f;                       // seconds per full swim stroke
-    float h = stroke_duration / (total_frames -1 );     // one integrator step per consecutive pose pair
-    int num_strokes = 3;                                // how many strokes to simulate
-    float rho_f = 998.0f;                               // fluid density (water)
+    int total_frames = 40;
+    float stroke_duration = 1.0f;
+    float pair_duration = stroke_duration / (total_frames - 1);  // time per pose pair
+    int substeps = 10;                                           // substeps per pose pair
+    float h = pair_duration / substeps;                         // integrator timestep
+    int num_strokes = 5;
+    float rho_f = 998.0f;
+    int output_every = 5;                                       // write an OBJ every N substeps
 
     // Pose storage from LoadAllPoses().
     std::vector<std::vector<Vector3f>> all_vertices;    // arrays of vertices

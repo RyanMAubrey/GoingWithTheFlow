@@ -1,6 +1,8 @@
 #include "integrator.h"
 #include "momentum.h"
 #include "inertia.h"
+#include "se3.h"
+
 // Forward declarations from lift_and_drag.cpp
 Vector6f calc_total_force(const std::vector<Vector3f>& positions_k,
                           const std::vector<Vector3f>& positions_k1,
@@ -12,7 +14,9 @@ Vector6f calc_total_force(const std::vector<Vector3f>& positions_k,
                           const Vector3f& gravity,
                           float total_mass,
                           const Vector3f& background_flow);
-#include "se3.h"
+
+float compute_volume(const std::vector<Vector3f>& gamma,
+                     const std::vector<Vector3i>& faces);
 
 #include <iostream>
 #include <set>
@@ -49,16 +53,38 @@ void Integrator::Simulate() {
     float total_mass = 0.0f;                    // neutrally buoyant
     Vector3f gravity(0.0f, -9.81f, 0.0f);       // standard gravity
     Vector3f bg_flow = Vector3f::Zero();        // no background flow for now
-    std::vector<float> mass_density(all_vertices[0].size(), rho_f);  // same as water
+    // Compute proper per-vertex mass from density * volume / num_vertices
+    float volume = compute_volume(all_vertices[0], shared_faces);
+    float total_body_mass = rho_f * volume;
+    float per_vertex_mass = total_body_mass / (float)all_vertices[0].size();
+    std::vector<float> mass_density(all_vertices[0].size(), per_vertex_mass);
+
+    std::cout << "Volume: " << volume << " m^3" << std::endl;
+    std::cout << "Total mass: " << total_body_mass << " kg" << std::endl;
+    std::cout << "Per-vertex mass: " << per_vertex_mass << " kg" << std::endl;
 
     Momentum m;
 
+    int global_step = 0;
+    int output_frame = 0;
+
     for (int swim_stroke = 0; swim_stroke < num_strokes; swim_stroke++) {
         for (int i = 0; i < total_frames - 1; i++) {
-            int step = swim_stroke * (total_frames - 1) + i;
-            
-            std::vector<Vector3f>& vertices_k  = all_vertices[i];
-            std::vector<Vector3f>& vertices_k1 = all_vertices[i + 1];
+
+            std::vector<Vector3f>& vA = all_vertices[i];
+            std::vector<Vector3f>& vB = all_vertices[i + 1];
+            int num_verts = (int)vA.size();
+
+            for (int sub = 0; sub < substeps; sub++) {
+                float alpha      = (float)sub / (float)substeps;
+                float alpha_next = (float)(sub + 1) / (float)substeps;
+
+                // Interpolate positions
+                std::vector<Vector3f> vertices_k(num_verts), vertices_k1(num_verts);
+                for (int v = 0; v < num_verts; v++) {
+                    vertices_k[v]  = (1.0f - alpha) * vA[v] + alpha * vB[v];
+                    vertices_k1[v] = (1.0f - alpha_next) * vA[v] + alpha_next * vB[v];
+                }
 
             // Recompute face attributes for this frame
             std::vector<float> face_areas;
@@ -119,16 +145,24 @@ void Integrator::Simulate() {
                 world_verts[v] = A * vertices_k1[v] + b;
             }
 
-            // Write output OBJ
-            std::string out_path = "output/frame_" + std::to_string(step) + ".obj";
-            write_obj(out_path, world_verts, shared_faces);
+            // Write output OBJ (not every substep)
+            if (global_step % output_every == 0) {
+                std::string out_path = "output/frame_" + std::to_string(output_frame) + ".obj";
+                write_obj(out_path, world_verts, shared_faces);
+                output_frame++;
+            }
 
             // Print progress
-            std::cout << "Step " << step
-            << " stroke = " << swim_stroke
-            << " pos = (" << b.x() << ", " << b.y() << ", " << b.z() << ")"
-            << " |v| = " << body_velocity.tail<3>().norm()
-            << std::endl;
+            if (global_step % 20 == 0) {
+                std::cout << "Step " << global_step
+                << " stroke = " << swim_stroke
+                << " pos = (" << b.x() << ", " << b.y() << ", " << b.z() << ")"
+                << " |v| = " << body_velocity.tail<3>().norm()
+                << std::endl;
+            }
+
+            global_step++;
+            } // end substep loop
         }
     }
 }
@@ -229,8 +263,7 @@ void Integrator::LoadAllPoses() {
     all_vertices.resize(total_frames);
 
     for (int i = 0; i < total_frames; i++) {
-        int frame_number = i * 8;  
-        std::string path = "turtle_poses/frame_" + std::to_string(frame_number) + ".obj";
+        std::string path = "turtle_poses/frame_" + std::to_string(i) + ".obj";
 
         if (i == 0) {
             // First frame: load full topology (faces, edges).
@@ -251,7 +284,7 @@ void Integrator::LoadAllPoses() {
             v *= 0.01f;
         }
 
-        std::cout << "Loaded frame " << frame_number
+        std::cout << "Loaded frame " << i
                   << ": " << all_vertices[i].size() << " vertices." << std::endl;
     }
 

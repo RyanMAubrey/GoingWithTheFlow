@@ -211,3 +211,6 @@ CMakeLists.txt.user
 
 # macOS
 .DS_Store
+
+# Output files
+output/
