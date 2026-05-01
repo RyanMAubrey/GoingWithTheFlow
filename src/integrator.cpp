@@ -25,22 +25,6 @@ float compute_volume(const std::vector<Vector3f>& gamma,
 
 Integrator::Integrator() {}
 
-static void write_obj(const std::string& path,
-                      const std::vector<Vector3f>& verts,
-                      const std::vector<Vector3i>& faces) {
-    std::ofstream file(path);
-    if (!file.is_open()) {
-        std::cerr << "Could not write: " << path << std::endl;
-        return;
-    }
-    for (const auto& v : verts) {
-        file << "v " << v.x() << " " << v.y() << " " << v.z() << "\n";
-    }
-    for (const auto& f : faces) {
-        file << "f " << (f.x()+1) << " " << (f.y()+1) << " " << (f.z()+1) << "\n";
-    }
-}
-
 void Integrator::Simulate() {
     LoadAllPoses();
 
@@ -50,7 +34,7 @@ void Integrator::Simulate() {
     Vector6f mu = Vector6f::Zero();
 
     // Scene parameters
-    float total_mass = 0.0f;                    // neutrally buoyant
+    float total_mass = 0.5f;                    // neutrally buoyant
     Vector3f gravity(0.0f, -9.81f, 0.0f);       // standard gravity
     Vector3f bg_flow = Vector3f::Zero();        // no background flow for now
     // Compute proper per-vertex mass from density * volume / num_vertices
@@ -145,24 +129,17 @@ void Integrator::Simulate() {
                 world_verts[v] = A * vertices_k1[v] + b;
             }
 
-            // Write output OBJ (not every substep)
+            // Store frame for viewer (convert float -> double for Shape class)
             if (global_step % output_every == 0) {
-                std::string out_path = "output/frame_" + std::to_string(output_frame) + ".obj";
-                write_obj(out_path, world_verts, shared_faces);
-                output_frame++;
-            }
-
-            // Print progress
-            if (global_step % 20 == 0) {
-                std::cout << "Step " << global_step
-                << " stroke = " << swim_stroke
-                << " pos = (" << b.x() << ", " << b.y() << ", " << b.z() << ")"
-                << " |v| = " << body_velocity.tail<3>().norm()
-                << std::endl;
+                std::vector<Eigen::Vector3d> frame_d(world_verts.size());
+                for (int v = 0; v < (int)world_verts.size(); v++) {
+                    frame_d[v] = world_verts[v].cast<double>();
+                }
+                output_frames.push_back(std::move(frame_d));
             }
 
             global_step++;
-            } // end substep loop
+            }
         }
     }
 }

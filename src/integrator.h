@@ -30,6 +30,11 @@ public:
 
     void Simulate();
 
+    // After Simulate() completes, these hold the output for visualization.
+    // Vertices are in world space (Vector3d for compatibility with Shape class).
+    std::vector<std::vector<Eigen::Vector3d>> output_frames;
+    const std::vector<Vector3i>& getSharedFaces() const { return shared_faces; }
+
     TriMesh LoadPose(const std::string& filepath, std::vector<Vector3f>& vertices, std::vector<Vector3i>& faces, std::vector<Edge>& edges,
                   std::vector<float>& face_areas, std::vector<Vector3f>& face_normals);
 

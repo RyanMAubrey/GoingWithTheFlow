@@ -18,7 +18,7 @@ include_directories(src)
 include_directories(libs)
 
 # ==============================================================================
-# Forces Test Target
+# Test Targets (no Qt dependency)
 # ==============================================================================
 add_executable(test_forces
     src/test_forces.cpp
@@ -28,29 +28,41 @@ add_executable(test_forces
 target_include_directories(test_forces PRIVATE src Eigen)
 
 # ==============================================================================
-# Main Application
+# Main Application with Viewer (requires Qt6 + GLEW)
 # ==============================================================================
 find_package(Qt6 QUIET COMPONENTS Core Concurrent Xml Widgets OpenGL OpenGLWidgets Gui)
 
 if (Qt6_FOUND)
-    # Specifies .cpp and .h files to be passed to the compiler
     add_executable(${PROJECT_NAME}
-        src/momentum.h src/momentum.cpp
-        src/lift_and_drag.cpp
-        src/inertia.h src/inertia.cpp
-        src/main.cpp
+        # Simulation core
         src/integrator.h src/integrator.cpp
+        src/momentum.h src/momentum.cpp
+        src/inertia.h src/inertia.cpp
+        src/lift_and_drag.cpp
         src/mesh_loader.h
+        src/se3.h
+
+        # Viewer
+        src/main.cpp
+        src/simviewerwidget.h src/simviewerwidget.cpp
+        src/graphics/camera.h src/graphics/camera.cpp
+        src/graphics/shader.h src/graphics/shader.cpp
+        src/graphics/shape.h src/graphics/shape.cpp
+        src/graphics/graphicsdebug.h src/graphics/graphicsdebug.cpp
+
+        # Debug widgets (keep for now)
         src/bodydebugwidget.h src/bodydebugwidget.cpp
         src/fluiddebugwidget.h src/fluiddebugwidget.cpp
         src/inertiadebugwidget.h src/inertiadebugwidget.cpp
+
+        # Shader resources
+        resources/shaders/shaders.qrc
     )
 
-    # GLEW: this creates its library and allows you to `#include "GL/glew.h"`
+    # GLEW
     add_library(StaticGLEW STATIC glew/src/glew.c)
     include_directories(${PROJECT_NAME} PRIVATE glew/include)
 
-    # Specifies libraries to be linked (Qt components, glew, etc)
     target_link_libraries(${PROJECT_NAME} PRIVATE
         Qt::Concurrent
         Qt::Core
@@ -62,20 +74,12 @@ if (Qt6_FOUND)
         StaticGLEW
     )
 
-    # This allows you to `#include "Eigen/..."`
     target_include_directories(${PROJECT_NAME} PRIVATE
         Eigen
+        util
     )
 
-    # Specifies other files
-    qt6_add_resources(${PROJECT_NAME} "Resources"
-        PREFIX
-            "/"
-        FILES
-           # resources/shaders/shader.frag
-    )
-
-    # GLEW: this provides support for Windows (including 64-bit)
+    # GLEW Windows support
     if (WIN32)
       add_compile_definitions(GLEW_STATIC)
       target_link_libraries(${PROJECT_NAME} PRIVATE
@@ -84,15 +88,13 @@ if (Qt6_FOUND)
       )
     endif()
 else()
-    message(STATUS "Qt6 not found — only building test_forces (main app skipped)")
+    message(STATUS "Qt6 not found — only building test targets and run_sim")
 endif()
 
-# Set this flag to silence warnings on Windows
+# Silence platform warnings
 if (MSVC OR MSYS OR MINGW)
   set(CMAKE_CXX_FLAGS "-Wno-volatile")
 endif()
-
-# Set this flag to silence warnings on MacOS
 if (APPLE)
   set(CMAKE_CXX_FLAGS "-Wno-deprecated-volatile")
 endif()
