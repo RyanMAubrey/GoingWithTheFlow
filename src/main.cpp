@@ -9,7 +9,7 @@
 
 int main(int argc, char *argv[])
 {
-    // Run simulation first (no Qt needed for this part)
+    // Run simulation first
     std::filesystem::create_directories("output");
 
     Integrator integrator;
@@ -18,7 +18,7 @@ int main(int argc, char *argv[])
     std::cout << "Simulation complete. " << integrator.output_frames.size()
               << " frames stored for playback." << std::endl;
 
-    // Now open the viewer to play back the results
+    // Open the viewer
     QApplication app(argc, argv);
 
     QSurfaceFormat fmt;
@@ -26,12 +26,14 @@ int main(int argc, char *argv[])
     fmt.setProfile(QSurfaceFormat::CoreProfile);
     QSurfaceFormat::setDefaultFormat(fmt);
 
-    // Get the face topology for rendering
     std::vector<Eigen::Vector3i> faces = integrator.getSharedFaces();
 
-    SimViewerWidget viewer(integrator.output_frames, faces);
+    SimViewerWidget viewer(integrator.output_frames, faces,
+                           integrator.texcoords,
+                           integrator.face_texcoord_ids,
+                           integrator.texture_path);
     viewer.resize(1200, 800);
-    viewer.setWindowTitle("Going with the Flow — Turtle Swimming");
+    viewer.setWindowTitle("Going with the Flow");
     viewer.show();
 
     return app.exec();

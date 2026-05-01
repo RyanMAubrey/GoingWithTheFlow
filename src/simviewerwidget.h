@@ -9,8 +9,8 @@
 #include <QTimer>
 #include <Eigen/Dense>
 #include <vector>
+#include <string>
 
-// Forward declarations — full includes in .cpp (after GLEW)
 class Camera;
 class Shader;
 class Shape;
@@ -22,6 +22,9 @@ class SimViewerWidget : public QOpenGLWidget
 public:
     SimViewerWidget(std::vector<std::vector<Eigen::Vector3d>>& frames,
                     const std::vector<Eigen::Vector3i>& faces,
+                    const std::vector<Eigen::Vector2f>& texcoords,
+                    const std::vector<Eigen::Vector3i>& face_texcoord_ids,
+                    const std::string& texturePath,
                     QWidget *parent = nullptr);
     ~SimViewerWidget();
 
@@ -43,11 +46,13 @@ private slots:
 private:
     std::vector<std::vector<Eigen::Vector3d>>& m_frames;
     std::vector<Eigen::Vector3i> m_faces;
+    std::vector<Eigen::Vector2f> m_texcoords;
+    std::vector<Eigen::Vector3i> m_face_texcoord_ids;
+    std::string m_texturePath;
 
     int m_currentFrame = 0;
     bool m_paused = false;
 
-    // These are pointers so we don't need the full type in the header
     Camera *m_camera = nullptr;
     Shader *m_shader = nullptr;
     Shape *m_shape = nullptr;

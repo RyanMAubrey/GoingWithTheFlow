@@ -13,7 +13,8 @@ Vector6f calc_total_force(const std::vector<Vector3f>& positions_k,
                           float timestep,
                           const Vector3f& gravity,
                           float total_mass,
-                          const Vector3f& background_flow);
+                          const Vector3f& background_flow,
+                          float drag_scale);
 
 float compute_volume(const std::vector<Vector3f>& gamma,
                      const std::vector<Vector3i>& faces);
@@ -32,42 +33,33 @@ void Integrator::Simulate() {
     Matrix4f pose = Matrix4f::Identity();
     Vector6f body_velocity = Vector6f::Zero();
     Vector6f mu = Vector6f::Zero();
-
-    // Scene parameters
-    float total_mass = 0.5f;                    // neutrally buoyant
-    Vector3f gravity(0.0f, -9.81f, 0.0f);       // standard gravity
-    Vector3f bg_flow = Vector3f::Zero();        // no background flow for now
-    // Compute proper per-vertex mass from density * volume / num_vertices
+    
+    // Compute per-vertex mass from density * volume / num_vertices
     float volume = compute_volume(all_vertices[0], shared_faces);
     float total_body_mass = rho_f * volume;
     float per_vertex_mass = total_body_mass / (float)all_vertices[0].size();
     std::vector<float> mass_density(all_vertices[0].size(), per_vertex_mass);
 
-    std::cout << "Volume: " << volume << " m^3" << std::endl;
-    std::cout << "Total mass: " << total_body_mass << " kg" << std::endl;
-    std::cout << "Per-vertex mass: " << per_vertex_mass << " kg" << std::endl;
-
     Momentum m;
 
     int global_step = 0;
-    int output_frame = 0;
 
     for (int swim_stroke = 0; swim_stroke < num_strokes; swim_stroke++) {
         for (int i = 0; i < total_frames - 1; i++) {
 
-            std::vector<Vector3f>& vA = all_vertices[i];
-            std::vector<Vector3f>& vB = all_vertices[i + 1];
-            int num_verts = (int)vA.size();
+            std::vector<Vector3f>& frame_A = all_vertices[i];
+            std::vector<Vector3f>& frame_B = all_vertices[i + 1];
+            int num_verts = (int)frame_A.size();
 
-            for (int sub = 0; sub < substeps; sub++) {
-                float alpha      = (float)sub / (float)substeps;
-                float alpha_next = (float)(sub + 1) / (float)substeps;
+            for (int substep = 0; substep < substeps; substep++) {
+                float alpha = (float) substep / (float) substeps;
+                float alpha_next = (float) (substep + 1) / (float) substeps;
 
                 // Interpolate positions
                 std::vector<Vector3f> vertices_k(num_verts), vertices_k1(num_verts);
                 for (int v = 0; v < num_verts; v++) {
-                    vertices_k[v]  = (1.0f - alpha) * vA[v] + alpha * vB[v];
-                    vertices_k1[v] = (1.0f - alpha_next) * vA[v] + alpha_next * vB[v];
+                    vertices_k[v]  = (1.0f - alpha) * frame_A[v] + alpha * frame_B[v];
+                    vertices_k1[v] = (1.0f - alpha_next) * frame_A[v] + alpha_next * frame_B[v];
                 }
 
             // Recompute face attributes for this frame
@@ -88,7 +80,7 @@ void Integrator::Simulate() {
             Vector6f combined_momentum = body_momentum + fluid_momentum;
 
             Vector6f total_forces = calc_total_force(vertices_k, vertices_k1, shared_faces,
-                                          pose, body_velocity, rho_f, h, gravity, total_mass, bg_flow);
+                                          pose, body_velocity, rho_f, h, gravity, total_mass, bg_flow, drag_scale);
             
             // Line 7: Newton Solve
             Vector6f rhs = dtau_inv_star(-h * body_velocity) * mu + h * total_forces;   // RHS is constant
@@ -117,6 +109,10 @@ void Integrator::Simulate() {
 
             // Lines 8-10: Update State
             body_velocity  = body_velocity_new;
+
+            // Added to prevent turtle from falling back
+            body_velocity.head<3>() *= angular_damping;
+
             mu = kirchhoff_tensor * body_velocity + combined_momentum;
             pose = pose * cayley_map(h * body_velocity);
 
@@ -129,7 +125,7 @@ void Integrator::Simulate() {
                 world_verts[v] = A * vertices_k1[v] + b;
             }
 
-            // Store frame for viewer (convert float -> double for Shape class)
+            // Store current frame for visualizer
             if (global_step % output_every == 0) {
                 std::vector<Eigen::Vector3d> frame_d(world_verts.size());
                 for (int v = 0; v < (int)world_verts.size(); v++) {
@@ -244,8 +240,15 @@ void Integrator::LoadAllPoses() {
 
         if (i == 0) {
             // First frame: load full topology (faces, edges).
-            LoadPose(path, all_vertices[i], shared_faces, shared_edges,
+            TriMesh mesh = LoadPose(path, all_vertices[i], shared_faces, shared_edges,
                      shared_face_areas_scratch, shared_face_normals_scratch);
+
+            // Store texture data for rendering
+            texcoords = mesh.texcoords;
+            face_texcoord_ids = mesh.face_texcoord_ids;
+            if (!mesh.materials.empty() && !mesh.materials[0].map_kd.empty()) {
+                texture_path = "turtle_poses/" + mesh.materials[0].map_kd;
+            }
         } else {
             // Subsequent frames: only need vertex positions.
             std::vector<Vector3i> unused_faces;
@@ -260,10 +263,6 @@ void Integrator::LoadAllPoses() {
         for (auto& v : all_vertices[i]) {
             v *= 0.01f;
         }
-
-        std::cout << "Loaded frame " << i
-                  << ": " << all_vertices[i].size() << " vertices." << std::endl;
     }
-
     std::cout << "All " << total_frames << " poses loaded." << std::endl;
 }

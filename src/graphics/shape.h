@@ -3,6 +3,7 @@
 
 #include <GL/glew.h>
 #include <vector>
+#include <string>
 
 #include <Eigen/Dense>
 
@@ -16,6 +17,13 @@ public:
     void init(const std::vector<Eigen::Vector3d> &vertices, const std::vector<Eigen::Vector3d> &normals, const std::vector<Eigen::Vector3i> &triangles);
     void init(const std::vector<Eigen::Vector3d> &vertices, const std::vector<Eigen::Vector3i> &triangles);
     void init(const std::vector<Eigen::Vector3d> &vertices, const std::vector<Eigen::Vector3i> &triangles, const std::vector<Eigen::Vector4i> &tetIndices);
+
+    // Textured init: pass UVs expanded per-face (same length as expanded verts)
+    void initTextured(const std::vector<Eigen::Vector3d> &vertices,
+                      const std::vector<Eigen::Vector3i> &triangles,
+                      const std::vector<Eigen::Vector2f> &texcoords,
+                      const std::vector<Eigen::Vector3i> &face_texcoord_ids,
+                      const std::string &texturePath);
 
     void setVertices(const std::vector<Eigen::Vector3d> &vertices, const std::vector<Eigen::Vector3d> &normals);
     void setVertices(const std::vector<Eigen::Vector3d> &vertices);
@@ -32,9 +40,11 @@ private:
     GLuint m_surfaceVao;
     GLuint m_tetVao;
     GLuint m_surfaceVbo;
+    GLuint m_uvVbo;
     GLuint m_tetVbo;
     GLuint m_surfaceIbo;
     GLuint m_tetIbo;
+    GLuint m_textureId;
 
     unsigned int m_numSurfaceVertices;
     unsigned int m_numTetVertices;
@@ -43,6 +53,8 @@ private:
     float m_blue;
     float m_green;
     float m_alpha;
+
+    bool m_hasTexture;
 
     std::vector<Eigen::Vector3i> m_faces;
 

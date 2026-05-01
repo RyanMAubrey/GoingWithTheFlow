@@ -1,4 +1,4 @@
-#include <GL/glew.h>  // Must be first — before any Qt/GL headers
+#include <GL/glew.h>  // Must be first
 #include "simviewerwidget.h"
 #include "graphics/camera.h"
 #include "graphics/shader.h"
@@ -15,10 +15,16 @@ using namespace Eigen;
 
 SimViewerWidget::SimViewerWidget(std::vector<std::vector<Vector3d>>& frames,
                                  const std::vector<Vector3i>& faces,
+                                 const std::vector<Vector2f>& texcoords,
+                                 const std::vector<Vector3i>& face_texcoord_ids,
+                                 const std::string& texturePath,
                                  QWidget *parent)
     : QOpenGLWidget(parent),
       m_frames(frames),
-      m_faces(faces)
+      m_faces(faces),
+      m_texcoords(texcoords),
+      m_face_texcoord_ids(face_texcoord_ids),
+      m_texturePath(texturePath)
 {
     setMouseTracking(true);
     QApplication::setOverrideCursor(Qt::ArrowCursor);
@@ -54,16 +60,22 @@ void SimViewerWidget::initializeGL()
     m_shape = new Shape();
     m_ground = new Shape();
 
-    // Initialize the shape with the first frame
+    // Initialize shape — use textured init if we have texture data
     if (!m_frames.empty()) {
-        m_shape->init(m_frames[0], m_faces);
-        m_shape->setColor(0.4f, 0.7f, 0.45f);  // greenish turtle color
+        if (!m_texturePath.empty() && !m_texcoords.empty()) {
+            m_shape->initTextured(m_frames[0], m_faces,
+                                  m_texcoords, m_face_texcoord_ids,
+                                  m_texturePath);
+        } else {
+            m_shape->init(m_frames[0], m_faces);
+            m_shape->setColor(0.4f, 0.7f, 0.45f);
+        }
     }
 
     initGround();
-    m_ground->setColor(0.2f, 0.3f, 0.6f);  // blue-ish water floor
+    m_ground->setColor(0.2f, 0.3f, 0.6f);
 
-    // Set up camera — turtle is ~0.6m long, swims in roughly +Y/-Z
+    // Camera setup
     Vector3f eye(0.5f, 0.3f, 0.5f);
     Vector3f target(0.0f, 0.05f, 0.0f);
     m_camera->lookAt(eye, target);
@@ -71,7 +83,7 @@ void SimViewerWidget::initializeGL()
     m_camera->toggleIsOrbiting();
     m_camera->setPerspective(45, width() / static_cast<float>(height()), 0.001f, 200.0f);
 
-    m_playbackTimer.start(1000 / 30);  // 30 fps playback
+    m_playbackTimer.start(1000 / 30);
 }
 
 void SimViewerWidget::paintGL()
@@ -93,8 +105,6 @@ void SimViewerWidget::resizeGL(int w, int h)
     glViewport(0, 0, w, h);
     m_camera->setAspect(static_cast<float>(w) / h);
 }
-
-// ================== Input handling ==================
 
 void SimViewerWidget::mousePressEvent(QMouseEvent *event)
 {
@@ -165,11 +175,8 @@ void SimViewerWidget::keyReleaseEvent(QKeyEvent *event)
     }
 }
 
-// ================== Playback tick ==================
-
 void SimViewerWidget::tick()
 {
-    // Move camera
     auto look = m_camera->getLook();
     look.y() = 0;
     look.normalize();
@@ -181,19 +188,16 @@ void SimViewerWidget::tick()
     moveVec *= dt;
     m_camera->move(moveVec);
 
-    // Advance frame
     if (!m_paused && !m_frames.empty()) {
         m_shape->setVertices(m_frames[m_currentFrame]);
         m_currentFrame++;
         if (m_currentFrame >= (int)m_frames.size()) {
-            m_currentFrame = 0;  // loop
+            m_currentFrame = 0;
         }
     }
 
-    update();  // trigger paintGL
+    update();
 }
-
-// ================== Ground plane ==================
 
 void SimViewerWidget::initGround()
 {

@@ -1,9 +1,9 @@
 #version 330 core
 out vec4 fragColor;
 
-// Additional information for lighting
 in vec3 normal_worldSpace;
 in vec3 position_worldSpace;
+in vec2 fragTexCoord;
 
 uniform int wire = 0;
 uniform float red = 1.0;
@@ -11,6 +11,9 @@ uniform float green = 1.0;
 uniform float blue = 1.0;
 uniform float alpha = 1.0;
 uniform mat4 view;
+
+uniform int useTexture = 0;
+uniform sampler2D texSampler;
 
 void main() {
     if (wire == 1) {
@@ -22,8 +25,13 @@ void main() {
     vec3 camPos = -mat3(view) * view[3].xyz;
     vec3 V = normalize(camPos - position_worldSpace);
 
-    // Material color
-    vec3 baseColor = vec3(red, green, blue);
+    // Material color — from texture or uniform
+    vec3 baseColor;
+    if (useTexture == 1) {
+        baseColor = texture(texSampler, fragTexCoord).rgb;
+    } else {
+        baseColor = vec3(red, green, blue);
+    }
 
     // Warm light
     vec3 warmLightDir = normalize(vec3(2.0, 4.0, -3.0));
@@ -36,16 +44,15 @@ void main() {
     vec3 coolLightColor = vec3(0.3, 0.55, 0.75);
     float coolDiffuse = max(dot(N, coolLightDir), 0.0);
 
-    // Arbitrary blue-ish ambient color
+    // Ambient
     vec3 ambient = vec3(0.1, 0.1, 0.16);
 
-    // Add it all together
     vec3 color = baseColor * (ambient
                  + warmDiffuse * warmLightColor * 0.7
                  + coolDiffuse * coolLightColor * 0.3)
                  + warmSpec * warmLightColor * 0.3;
 
-    // Dampen the color a bit
+    // Tonemap
     color = color / (color + vec3(0.5));
 
     // Distance fog

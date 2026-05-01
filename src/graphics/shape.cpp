@@ -1,6 +1,7 @@
 #include "shape.h"
 
 #include <iostream>
+#include <QImage>
 
 #include "graphics/shader.h"
 
@@ -8,10 +9,13 @@ using namespace Eigen;
 
 Shape::Shape()
     : m_tetVao(-1),
+      m_uvVbo(0),
+      m_textureId(0),
       m_numSurfaceVertices(),
       m_verticesSize(),
       m_modelMatrix(Eigen::Matrix4f::Identity()),
-      m_wireframe(false)
+      m_wireframe(false),
+      m_hasTexture(false)
 {
 }
 
@@ -103,21 +107,146 @@ void Shape::init(const std::vector<Eigen::Vector3d> &vertices, const std::vector
     m_verticesSize = vertices.size();
     m_faces = triangles;
 
-    if (vertices.size() > 4) { //shape
+    if (vertices.size() > 4) {
         m_red = 0.93;
         m_green = 0.8;
         m_blue = 1.f;
         m_alpha = 1.f;
-    } else { //ground
+    } else {
         m_red = 1;
         m_green = 1;
         m_blue = 1;
         m_alpha = 1.f;
     }
-//    m_red = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-//    m_blue = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-//    m_green = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-//    m_alpha = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+}
+
+void Shape::initTextured(const std::vector<Eigen::Vector3d> &vertices,
+                         const std::vector<Eigen::Vector3i> &triangles,
+                         const std::vector<Eigen::Vector2f> &texcoords,
+                         const std::vector<Eigen::Vector3i> &face_texcoord_ids,
+                         const std::string &texturePath)
+{
+    // Expand vertices, normals, and UVs per-face (flat shading + per-face UVs)
+    std::vector<Eigen::Vector3d> verts;
+    std::vector<Eigen::Vector3d> normals;
+    std::vector<float> uvs;
+    std::vector<Eigen::Vector3i> faces;
+
+    verts.reserve(triangles.size() * 3);
+    normals.reserve(triangles.size() * 3);
+    uvs.reserve(triangles.size() * 3 * 2);
+
+    for (int f = 0; f < (int)triangles.size(); f++) {
+        const auto& tri = triangles[f];
+        const auto& v1 = vertices[tri[0]];
+        const auto& v2 = vertices[tri[1]];
+        const auto& v3 = vertices[tri[2]];
+
+        auto n = (v2 - v1).cross(v3 - v1);
+
+        int s = verts.size();
+        faces.push_back(Eigen::Vector3i(s, s + 1, s + 2));
+
+        normals.push_back(n);
+        normals.push_back(n);
+        normals.push_back(n);
+
+        verts.push_back(v1);
+        verts.push_back(v2);
+        verts.push_back(v3);
+
+        // UVs — use face_texcoord_ids to look up the right UV per face-vertex
+        if (f < (int)face_texcoord_ids.size() && !texcoords.empty()) {
+            const auto& tci = face_texcoord_ids[f];
+            for (int k = 0; k < 3; k++) {
+                int idx = tci[k];
+                if (idx >= 0 && idx < (int)texcoords.size()) {
+                    uvs.push_back(texcoords[idx].x());
+                    uvs.push_back(texcoords[idx].y());
+                } else {
+                    uvs.push_back(0.0f);
+                    uvs.push_back(0.0f);
+                }
+            }
+        } else {
+            for (int k = 0; k < 3; k++) {
+                uvs.push_back(0.0f);
+                uvs.push_back(0.0f);
+            }
+        }
+    }
+
+    // --- Vertex + Normal VBO (same as non-textured init) ---
+    glGenBuffers(1, &m_surfaceVbo);
+    glGenBuffers(1, &m_surfaceIbo);
+    glGenBuffers(1, &m_uvVbo);
+    glGenVertexArrays(1, &m_surfaceVao);
+
+    glBindBuffer(GL_ARRAY_BUFFER, m_surfaceVbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(double) * verts.size() * 3 * 2, nullptr, GL_DYNAMIC_DRAW);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(double) * verts.size() * 3, verts.data());
+    glBufferSubData(GL_ARRAY_BUFFER, sizeof(double) * verts.size() * 3, sizeof(double) * normals.size() * 3, normals.data());
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    // --- UV VBO ---
+    glBindBuffer(GL_ARRAY_BUFFER, m_uvVbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * uvs.size(), uvs.data(), GL_STATIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    // --- IBO ---
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_surfaceIbo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(int) * 3 * faces.size(), faces.data(), GL_STATIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+    // --- VAO ---
+    glBindVertexArray(m_surfaceVao);
+
+    // Attribute 0: position
+    glBindBuffer(GL_ARRAY_BUFFER, m_surfaceVbo);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_DOUBLE, GL_FALSE, 0, (GLvoid*)0);
+
+    // Attribute 1: normal
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 3, GL_DOUBLE, GL_FALSE, 0, (GLvoid*)(sizeof(double) * verts.size() * 3));
+
+    // Attribute 2: UV
+    glBindBuffer(GL_ARRAY_BUFFER, m_uvVbo);
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0, (GLvoid*)0);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_surfaceIbo);
+    glBindVertexArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+    m_numSurfaceVertices = faces.size() * 3;
+    m_verticesSize = vertices.size();
+    m_faces = triangles;
+
+    // --- Load texture via Qt (no external dependencies) ---
+    QImage img(QString::fromStdString(texturePath));
+    if (!img.isNull()) {
+        img = img.mirrored().convertToFormat(QImage::Format_RGBA8888);
+        glGenTextures(1, &m_textureId);
+        glBindTexture(GL_TEXTURE_2D, m_textureId);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, img.width(), img.height(),
+                     0, GL_RGBA, GL_UNSIGNED_BYTE, img.bits());
+        glGenerateMipmap(GL_TEXTURE_2D);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glBindTexture(GL_TEXTURE_2D, 0);
+        m_hasTexture = true;
+        std::cout << "Loaded texture: " << texturePath << " ("
+                  << img.width() << "x" << img.height() << ")" << std::endl;
+    } else {
+        std::cerr << "Failed to load texture: " << texturePath << std::endl;
+        m_hasTexture = false;
+    }
+
+    m_red = 1; m_green = 1; m_blue = 1; m_alpha = 1;
 }
 
 void Shape::init(const std::vector<Eigen::Vector3d> &vertices, const std::vector<Eigen::Vector3i> &triangles, const std::vector<Eigen::Vector4i> &tetIndices)
@@ -183,7 +312,7 @@ void Shape::setVertices(const std::vector<Eigen::Vector3d> &vertices)
     }
     glBindBuffer(GL_ARRAY_BUFFER, m_surfaceVbo);
     glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(double) * verts.size() * 3, static_cast<const void *>(verts.data()));
-    glBufferSubData(GL_ARRAY_BUFFER, sizeof(double) * verts.size() * 3, sizeof(double) * verts.size() * 3, static_cast<const void *>(normals.data()));
+    glBufferSubData(GL_ARRAY_BUFFER, sizeof(double) * verts.size() * 3, sizeof(double) * normals.size() * 3, static_cast<const void *>(normals.data()));
     if(m_tetVao != static_cast<GLuint>(-1)) {
         glBindBuffer(GL_ARRAY_BUFFER, m_tetVbo);
         glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(double) * vertices.size() * 3, static_cast<const void *>(vertices.data()));
@@ -213,7 +342,7 @@ void Shape::setVertices(const std::vector<Eigen::Vector3d> &vertices, const std:
     }
     glBindBuffer(GL_ARRAY_BUFFER, m_surfaceVbo);
     glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(double) * vertices.size() * 3, static_cast<const void *>(vertices.data()));
-    glBufferSubData(GL_ARRAY_BUFFER, sizeof(double) * vertices.size() * 3, sizeof(double) * vertices.size() * 3, static_cast<const void *>(normals.data()));
+    glBufferSubData(GL_ARRAY_BUFFER, sizeof(double) * vertices.size() * 3, sizeof(double) * normals.size() * 3, static_cast<const void *>(normals.data()));
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
@@ -241,9 +370,24 @@ void Shape::draw(Shader *shader)
         shader->setUniform("green", m_green);
         shader->setUniform("blue",  m_blue);
         shader->setUniform("alpha", m_alpha);
+
+        // Bind texture if available
+        if (m_hasTexture) {
+            shader->setUniform("useTexture", 1);
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, m_textureId);
+            shader->setUniform("texSampler", 0);
+        } else {
+            shader->setUniform("useTexture", 0);
+        }
+
         glBindVertexArray(m_surfaceVao);
         glDrawElements(GL_TRIANGLES, m_numSurfaceVertices, GL_UNSIGNED_INT, reinterpret_cast<GLvoid *>(0));
         glBindVertexArray(0);
+
+        if (m_hasTexture) {
+            glBindTexture(GL_TEXTURE_2D, 0);
+        }
     }
 }
 

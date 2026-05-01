@@ -213,12 +213,12 @@ inline TriMesh load_obj(const std::string& filepath) {
         }
     }
 
-    std::cout << "Loaded OBJ: " << filepath << std::endl;
-    std::cout << "verts: " << mesh.vertices.size()
-              << " faces: " << mesh.faces.size()
-              << " materials: " << mesh.materials.size()
-              << " texcoords: " << mesh.texcoords.size()
-              << std::endl;
+    // std::cout << "Loaded OBJ: " << filepath << std::endl;
+    // std::cout << "verts: " << mesh.vertices.size()
+    //           << " faces: " << mesh.faces.size()
+    //           << " materials: " << mesh.materials.size()
+    //           << " texcoords: " << mesh.texcoords.size()
+    //           << std::endl;
 
     return mesh;
 }

@@ -67,7 +67,8 @@ Vector6f calc_lift_and_drag(const std::vector<Vector3f>& pos_k,
                             const Vector6f& body_twist,
                             float fluid_density,
                             float timestep,
-                            const Vector3f& background_flow)
+                            const Vector3f& background_flow,
+                            float drag_scale)
 {
     // Pull the constant background flow into the body frame
     const Matrix3f A_T = pose.block<3,3>(0,0).transpose();
@@ -117,7 +118,7 @@ Vector6f calc_lift_and_drag(const std::vector<Vector3f>& pos_k,
 
         // Prop. 1:  F_face = -rho_f * A * |u| * <u,n> * n
         const float un = u.dot(face_normal);
-        const Vector3f f_face = -fluid_density * face_area * u_mag * un * face_normal;
+        const Vector3f f_face = -drag_scale * fluid_density * face_area * u_mag * un * face_normal;
 
         // Accumulate as a body-frame wrench
         force  += f_face;
@@ -154,16 +155,14 @@ Vector6f calc_total_force(const std::vector<Vector3f>& positions_k,
                           float timestep,
                           const Vector3f& gravity,
                           float total_mass,
-                          const Vector3f& background_flow)
+                          const Vector3f& background_flow,
+                          float drag_scale)
 {
-    // Initialize zero force
     Vector6f externalForce = Vector6f::Zero();
 
-    // Calculate lift and drag from movement in the fluid
     externalForce += calc_lift_and_drag(positions_k, positions_k1, faces, pose, body_twist,
-                                        fluid_density, timestep, background_flow);
+                                        fluid_density, timestep, background_flow, drag_scale);
 
-    // Apply gravity (total_mass accounts for buoyancy)
     externalForce += calc_gravity(pose, gravity, total_mass);
 
     return externalForce;
