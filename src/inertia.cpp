@@ -85,3 +85,33 @@ Matrix6f calc_added_mass(const std::vector<Vector3f>& gamma,
 
     return M;
 }
+
+Matrix6f calc_added_mass_piecewise(const std::vector<Vector3f>& gamma,
+                                   const std::vector<Vector3i>& faces,
+                                   const std::vector<float>& face_areas,
+                                   const std::vector<Vector3f>& face_normals,
+                                   float fluid_density,
+                                   const std::vector<float>& face_deltas)
+{
+    Matrix6f M = Matrix6f::Zero();
+
+    for (int f = 0; f < (int)faces.size(); f++) {
+        const int i = faces[f].x();
+        const int j = faces[f].y();
+        const int k = faces[f].z();
+
+        const Vector3f centroid = (gamma[i] + gamma[j] + gamma[k]) / 3.0f;
+        const Vector3f n = face_normals[f];
+        const float A = face_areas[f];
+        const Vector3f q = centroid.cross(n);
+        const float delta = (f < (int)face_deltas.size()) ? face_deltas[f] : 0.0f;
+        const float scale = fluid_density * delta * A;
+
+        M.block<3,3>(0,0) += scale * q * q.transpose();
+        M.block<3,3>(0,3) += scale * q * n.transpose();
+        M.block<3,3>(3,0) += scale * n * q.transpose();
+        M.block<3,3>(3,3) += scale * n * n.transpose();
+    }
+
+    return M;
+}

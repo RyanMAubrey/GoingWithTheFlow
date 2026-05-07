@@ -1,0 +1,81 @@
+[simulate:global] starting
+All 40 poses loaded.
+[simulate:global] stroke 1/5
+[simulate:global] global delta: 0.0173227
+[simulate:global] 19/195 pose pairs complete
+[simulate:global] 38/195 pose pairs complete
+[simulate:global] stroke 2/5
+[simulate:global] 57/195 pose pairs complete
+[simulate:global] 76/195 pose pairs complete
+[simulate:global] stroke 3/5
+[simulate:global] 95/195 pose pairs complete
+[simulate:global] 114/195 pose pairs complete
+[simulate:global] stroke 4/5
+[simulate:global] 133/195 pose pairs complete
+[simulate:global] 152/195 pose pairs complete
+[simulate:global] stroke 5/5
+[simulate:global] 171/195 pose pairs complete
+[simulate:global] 190/195 pose pairs complete
+[simulate:global] 195/195 pose pairs complete
+[simulate:global] complete, stored 390 output frames
+[simulate:piecewise] starting
+All 40 poses loaded.
+[simulate:piecewise] stroke 1/5
+[simulate:piecewise] global delta: 0.0173227
+[simulate:piecewise] head delta: 0.0104562
+[simulate:piecewise] left_front_flipper delta: 0.0164214
+[simulate:piecewise] right_front_flipper delta: 0.0163463
+[simulate:piecewise] left_rear_flipper delta: 0.0154176
+[simulate:piecewise] right_rear_flipper delta: 0.0161024
+[simulate:piecewise] shell delta: 0.0183123
+[simulate:piecewise] 19/195 pose pairs complete
+[simulate:piecewise] 38/195 pose pairs complete
+[simulate:piecewise] stroke 2/5
+[simulate:piecewise] 57/195 pose pairs complete
+[simulate:piecewise] 76/195 pose pairs complete
+[simulate:piecewise] stroke 3/5
+[simulate:piecewise] 95/195 pose pairs complete
+[simulate:piecewise] 114/195 pose pairs complete
+[simulate:piecewise] stroke 4/5
+[simulate:piecewise] 133/195 pose pairs complete
+[simulate:piecewise] 152/195 pose pairs complete
+[simulate:piecewise] stroke 5/5
+[simulate:piecewise] 171/195 pose pairs complete
+[simulate:piecewise] 190/195 pose pairs complete
+[simulate:piecewise] 195/195 pose pairs complete
+[simulate:piecewise] complete, stored 390 output frames
+Global simulation complete. 390 frames stored for playback.
+Piecewise simulation complete. 390 frames stored for playback.
+
+=== Global vs Piecewise Added Mass ===
+Mean centroid trajectory diff: 0.00331814
+Max centroid trajectory diff:  0.00700015
+Final centroid diff:           0.00700015
+Global displacement:           -0.0111971   0.081157   -1.77785
+Piecewise displacement:        -0.00881266   0.0850451    -1.78316
+Loaded texture: turtle_poses/Green_Turtle_Texture.png (4096x4096)
+Loaded texture: turtle_poses/Green_Turtle_Texture.png (4096x4096)
+
+--- Interpretation Notes ---
+Global delta: 0.0173227
+Piecewise region deltas:
+  head: 0.0104562
+  left_front_flipper: 0.0164214
+  right_front_flipper: 0.0163463
+  left_rear_flipper: 0.0154176
+  right_rear_flipper: 0.0161024
+  shell: 0.0183123
+
+Comparison summary:
+  The piecewise method is not identical to the global method.
+  The shell delta is larger than the global delta, and the head delta is noticeably smaller.
+  The flipper deltas are all close to, but slightly below, the global delta.
+  Mean centroid trajectory difference: 0.00331814
+  Max / final centroid trajectory difference: 0.00700015
+  Global displacement:    -0.0111971   0.081157   -1.77785
+  Piecewise displacement: -0.00881266   0.0850451   -1.78316
+
+Takeaway:
+  The extension changes the simulated motion, but only modestly.
+  In this run, the piecewise method produced slightly different lateral drift,
+  slightly higher vertical displacement, and slightly more forward displacement.

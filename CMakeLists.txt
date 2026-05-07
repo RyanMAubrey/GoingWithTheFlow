@@ -40,10 +40,13 @@ if (Qt6_FOUND)
         src/graphics/shape.h src/graphics/shape.cpp
         src/graphics/graphicsdebug.h src/graphics/graphicsdebug.cpp
 
+        src/partition.h src/partition.cpp
+
         # Debug widgets (keep for now)
         src/bodydebugwidget.h src/bodydebugwidget.cpp
         src/fluiddebugwidget.h src/fluiddebugwidget.cpp
         src/inertiadebugwidget.h src/inertiadebugwidget.cpp
+        src/partitiondebugwidget.h src/partitiondebugwidget.cpp
 
         # Shader resources
         resources/shaders/shaders.qrc

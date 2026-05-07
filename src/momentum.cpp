@@ -50,3 +50,32 @@ Vector6f Momentum::calc_fluid_momentum(std::vector<Vector3f>& gamma_k, std::vect
 
     return make_vec6(l_f, p_f);
 }
+
+Vector6f Momentum::calc_fluid_momentum_piecewise(std::vector<Vector3f>& gamma_k,
+                                                 std::vector<Vector3f>& gamma_k1,
+                                                 std::vector<Vector3i>& faces,
+                                                 std::vector<float> face_areas,
+                                                 std::vector<Vector3f> face_normals,
+                                                 float rho_f,
+                                                 float h,
+                                                 const std::vector<float>& face_deltas) {
+    Vector3f l_f(0.0f, 0.0f, 0.0f);
+    Vector3f p_f(0.0f, 0.0f, 0.0f);
+    for (int f = 0; f < faces.size(); f++) {
+        int i = faces[f].x();
+        int j = faces[f].y();
+        int k = faces[f].z();
+        Vector3f gamma_ijk = (gamma_k[i] + gamma_k[j] + gamma_k[k]) / 3.0f;
+        Vector3f gamma_prime_ijk = ((gamma_k1[i] - gamma_k[i]) + (gamma_k1[j] - gamma_k[j]) + (gamma_k1[k] - gamma_k[k])) / (3.0f * h);
+
+        Vector3f n_ijk = face_normals[f];
+        float A_ijk = face_areas[f];
+        float dot_prod = gamma_prime_ijk.dot(n_ijk);
+        float delta = (f < (int)face_deltas.size()) ? face_deltas[f] : 0.0f;
+
+        l_f += rho_f * delta * dot_prod * gamma_ijk.cross(n_ijk) * A_ijk;
+        p_f += rho_f * delta * dot_prod * n_ijk * A_ijk;
+    }
+
+    return make_vec6(l_f, p_f);
+}

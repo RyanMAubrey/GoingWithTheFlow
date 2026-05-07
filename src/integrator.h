@@ -2,7 +2,10 @@
 #define INTEGRATOR_H
 
 #include <mesh_loader.h>
+#include <partition.h>
 
+#include <array>
+#include <utility>
 #include <vector>
 #include <Eigen/Dense>
 
@@ -23,15 +26,22 @@ struct Edge {
     float alpha; // [-pi, pi]
 };
 
+enum class AddedMassMode {
+    Global,
+    Piecewise
+};
+
 class Integrator
 {
 public:
     Integrator();
 
     void Simulate();
+    void Simulate(AddedMassMode mode);
 
     // These hold the output for visualization
     std::vector<std::vector<Eigen::Vector3d>> output_frames;
+    std::vector<Eigen::Vector3d> output_centroids;
     const std::vector<Vector3i>& getSharedFaces() const { return shared_faces; }
 
     // Texture data from the first frame (for rendering)
@@ -67,11 +77,19 @@ private:
     // Pose storage from LoadAllPoses().
     std::vector<std::vector<Vector3f>> all_vertices;    
     std::vector<Vector3i> shared_faces;
+    std::vector<int> shared_face_regions;
     std::vector<Edge> shared_edges;
+    std::vector<std::pair<int, int>> shared_edge_faces;
     std::vector<float> shared_face_areas_scratch;        
     std::vector<Vector3f> shared_face_normals_scratch;   
 
-    bool HasEdge(Vector3i& face, int i, int j);
+    bool HasEdge(const Vector3i& face, int i, int j) const;
+    void BuildEdgeFaceAdjacency();
+    std::array<float, NUM_REGIONS> CalculateRegionDeltas(const std::vector<Vector3f>& gamma,
+                                                         const std::vector<float>& face_areas,
+                                                         float fallback_delta) const;
+    std::vector<float> BuildFaceDeltas(const std::array<float, NUM_REGIONS>& region_deltas,
+                                       float fallback_delta) const;
 
     // Turtle scene parameters
     // std::string animal = "turtle";

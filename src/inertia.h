@@ -17,4 +17,11 @@ Matrix6f calc_added_mass(const std::vector<Vector3f>& gamma,
                          float fluid_density,
                          float delta);
 
+Matrix6f calc_added_mass_piecewise(const std::vector<Vector3f>& gamma,
+                                   const std::vector<Vector3i>& faces,
+                                   const std::vector<float>& face_areas,
+                                   const std::vector<Vector3f>& face_normals,
+                                   float fluid_density,
+                                   const std::vector<float>& face_deltas);
+
 #endif // INERTIA_H

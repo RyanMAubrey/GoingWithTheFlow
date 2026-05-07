@@ -15,6 +15,10 @@ public:
     Vector6f calc_fluid_momentum(std::vector<Vector3f>& gamma_k, std::vector<Vector3f>& gamma_k1, std::vector<Vector3i>& faces,
                                  std::vector<float> face_areas, std::vector<Vector3f> face_normals,
                                  std::vector<Edge>& edges, float rho_f, float h, float delta);
+    Vector6f calc_fluid_momentum_piecewise(std::vector<Vector3f>& gamma_k, std::vector<Vector3f>& gamma_k1,
+                                           std::vector<Vector3i>& faces, std::vector<float> face_areas,
+                                           std::vector<Vector3f> face_normals, float rho_f, float h,
+                                           const std::vector<float>& face_deltas);
 };
 
 #endif // MOMENTUM_H
