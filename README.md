@@ -1,12 +1,8 @@
-<div align="center">
-<pre>
-                    _____     ____
-                   /      \  |  o |
-                  |        |/ ___\|
-                  |_________/
-                  |_|_| |_|_|
-</pre>
-</div>
+<p align="center">
+  <video src="turtle_video.MP4" width="640" autoplay loop muted playsinline controls>
+    Your browser does not support embedded video. <a href="turtle_video.MP4">Download turtle_video.MP4</a>.
+  </video>
+</p>
 
 <h1 align="center">Going with the Flow</h1>
 
