@@ -236,7 +236,7 @@ void Integrator::LoadAllPoses() {
     all_vertices.resize(total_frames);
 
     for (int i = 0; i < total_frames; i++) {
-        std::string path = "turtle_poses/frame_" + std::to_string(i) + ".obj";
+        std::string path = animal + "_poses/frame_" + std::to_string(i) + ".obj";
 
         if (i == 0) {
             // First frame: load full topology (faces, edges).
@@ -247,7 +247,7 @@ void Integrator::LoadAllPoses() {
             texcoords = mesh.texcoords;
             face_texcoord_ids = mesh.face_texcoord_ids;
             if (!mesh.materials.empty() && !mesh.materials[0].map_kd.empty()) {
-                texture_path = "turtle_poses/" + mesh.materials[0].map_kd;
+                texture_path = animal + "_poses/" + mesh.materials[0].map_kd;
             }
         } else {
             // Subsequent frames: only need vertex positions.

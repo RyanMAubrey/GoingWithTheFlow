@@ -53,13 +53,15 @@ public:
     void LoadAllPoses();
 
 private:
+
+    // General scene parameters
     int total_frames = 40;
     float stroke_duration = 1.0f;
     float pair_duration = stroke_duration / (total_frames - 1);     // time per pose pair
     int substeps = 10;                                              // substeps per pose pair
     float h = pair_duration / substeps;                             // integrator timestep
-    int num_strokes = 5;                                            // number of swimming strokes to simulate
-    float rho_f = 998.0f;                                           // density of fluid (kg/m^3)    
+    int num_strokes = 10;                                           // number of swimming strokes to simulate
+    float rho_f = 998.0f;                                           // density of fluid (kg/m^3)
     int output_every = 5;                                           // save output every N frames
 
     // Pose storage from LoadAllPoses().
@@ -72,11 +74,20 @@ private:
     bool HasEdge(Vector3i& face, int i, int j);
 
     // Turtle scene parameters
-    float total_mass = 0.25f;                                   // slight effect of gravity
+    // std::string animal = "turtle";
+    // float total_mass = 0.25f;                                   // slight effect of gravity
+    // Vector3f gravity = Vector3f(0.0f, -9.81f, 0.0f);            // standard gravity
+    // Vector3f bg_flow = Vector3f::Zero();                        // no background flow
+    // float angular_damping = 0.95f;                              // 1.0 = no damping, 0.9 = strong damping
+    // float drag_scale = 0.2f;                                    // 1.0 = full flat-plate drag, lower = more streamlined
+
+    // Worm scene parameters
+    std::string animal = "worm";
+    float total_mass = 0.0f;                                   // slight effect of gravity
     Vector3f gravity = Vector3f(0.0f, -9.81f, 0.0f);            // standard gravity
     Vector3f bg_flow = Vector3f::Zero();                        // no background flow
-    float angular_damping = 0.95f;                              // 1.0 = no damping, 0.9 = strong damping
-    float drag_scale = 0.2f;                                    // 1.0 = full flat-plate drag, lower = more streamlined
+    float angular_damping = 1.0f;                              // 1.0 = no damping, 0.9 = strong damping
+    float drag_scale = 1.0f;                                    // 1.0 = full flat-plate drag, lower = more streamlined
 };
 
 #endif // INTEGRATOR_H

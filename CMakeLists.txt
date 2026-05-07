@@ -18,16 +18,6 @@ include_directories(src)
 include_directories(libs)
 
 # ==============================================================================
-# Test Targets (no Qt dependency)
-# ==============================================================================
-add_executable(test_forces
-    src/test_forces.cpp
-    src/lift_and_drag.cpp
-    src/inertia.cpp
-)
-target_include_directories(test_forces PRIVATE src Eigen)
-
-# ==============================================================================
 # Main Application with Viewer (requires Qt6 + GLEW)
 # ==============================================================================
 find_package(Qt6 QUIET COMPONENTS Core Concurrent Xml Widgets OpenGL OpenGLWidgets Gui)
