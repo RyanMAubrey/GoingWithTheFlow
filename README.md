@@ -1,7 +1,5 @@
 <p align="center">
-  <video src="turtle_video.MP4" width="640" autoplay loop muted playsinline controls>
-    Your browser does not support embedded video. <a href="turtle_video.MP4">Download turtle_video.MP4</a>.
-  </video>
+  <img src="turtle_video.gif" width="640" alt="Simulated turtle swimming"/>
 </p>
 
 <h1 align="center">Going with the Flow</h1>
